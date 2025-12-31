@@ -4,14 +4,13 @@ package com.example.banksampah.data
 import android.app.Application
 import android.content.Context
 import com.cloudinary.android.MediaManager
-import com.example.banksampah.BuildConfig
 
 object CloudinaryManager {
     fun init(context: Context) {
         val config = mapOf(
-            "cloud_name" to BuildConfig.CLOUDINARY_CLOUD_NAME,
-            "api_key" to BuildConfig.CLOUDINARY_API_KEY,
-            "api_secret" to BuildConfig.CLOUDINARY_API_SECRET
+            "cloud_name" to "de1lnrcww",
+            "api_key" to "655736571337241",
+            "api_secret" to "4BjyogQERQ-9TiEeYwj8PgqROdc"
         )
         MediaManager.init(context, config)
     }

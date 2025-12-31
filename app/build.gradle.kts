@@ -9,11 +9,6 @@ android {
     namespace = "com.example.banksampah"
     compileSdk = 35
 
-    buildFeatures {
-        compose = true
-        buildConfig = true
-    }
-
 
     defaultConfig {
         applicationId = "com.example.banksampah"
@@ -23,22 +18,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        buildConfigField(
-            "String",
-            "CLOUDINARY_CLOUD_NAME",
-            "\"${project.findProperty("CLOUDINARY_CLOUD_NAME")}\""
-        )
-        buildConfigField(
-            "String",
-            "CLOUDINARY_API_KEY",
-            "\"${project.findProperty("CLOUDINARY_API_KEY")}\""
-        )
-        buildConfigField(
-            "String",
-            "CLOUDINARY_API_SECRET",
-            "\"${project.findProperty("CLOUDINARY_API_SECRET")}\""
-        )
     }
 
     buildTypes {
