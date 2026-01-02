@@ -42,6 +42,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.banksampah.R
+import com.example.banksampah.Routes
 import com.example.banksampah.data.ForumPost
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -141,7 +142,28 @@ fun CloudinaryImage(
 @Composable
 fun ForumItem(post: ForumPost, navController: NavHostController) {
 
-    // Debug: print URL gambar ke log
+    var replyCount by remember { mutableStateOf(0) }
+
+    LaunchedEffect(post.id) {
+        val repliesRef = FirebaseDatabase.getInstance().getReference("replies")
+
+        repliesRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var count = 0
+                for (replySnap in snapshot.children) {
+                    val postId = replySnap.child("postId").getValue(String::class.java)
+                    if (postId == post.id) {
+                        count++
+                    }
+                }
+                replyCount = count
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
+        // Debug: print URL gambar ke log
     println("DEBUG - Post ID: ${post.id}, Image URL: ${post.imageUrl}")
 
     Column(
@@ -213,8 +235,8 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
 
             Button(
                 onClick = {
-                    // Navigasi ke halaman detail
-                    navController.navigate("forum_detail/${post.id}")
+                    // Navigasi ke halaman detail menggunakan helper function
+                    navController.navigate(Routes.forumDetail(post.id))
                 },
                 shape = RoundedCornerShape(24.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -248,7 +270,7 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
                             )
                     ) {
                         Text(
-                            text = "1", // Jumlah balasan (bisa ditambahkan field di data class)
+                            text = replyCount.toString(), // Nanti bisa diganti dengan jumlah balasan dari Firebase
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.Black,
@@ -257,6 +279,7 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
                     }
                 }
             }
+
         }
     }
 }
