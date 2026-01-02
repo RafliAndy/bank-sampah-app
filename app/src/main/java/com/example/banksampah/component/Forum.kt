@@ -287,17 +287,36 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
 // Fungsi untuk format waktu
 fun formatTimeAgo(timestamp: Long): String {
     val now = System.currentTimeMillis()
-    val diff = now - timestamp
-    val seconds = diff / 1000
+    val diffMillis = now - timestamp
+
+    val seconds = diffMillis / 1000
     val minutes = seconds / 60
     val hours = minutes / 60
     val days = hours / 24
+    val months = days / 30
+    val years = months / 12
 
     return when {
-        days > 0 -> "$days hari yang lalu"
-        hours > 0 -> "$hours jam yang lalu"
-        minutes > 0 -> "$minutes menit yang lalu"
+        years > 0 -> {
+            if (years == 1L) "1 tahun yang lalu"
+            else "$years tahun yang lalu"
+        }
+        months > 0 -> {
+            if (months == 1L) "1 bulan yang lalu"
+            else "$months bulan yang lalu"
+        }
+        days > 0 -> {
+            if (days == 1L) "1 hari yang lalu"
+            else "$days hari yang lalu"
+        }
+        hours > 0 -> {
+            if (hours == 1L) "1 jam yang lalu"
+            else "$hours jam yang lalu"
+        }
+        minutes > 0 -> {
+            if (minutes == 1L) "1 menit yang lalu"
+            else "$minutes menit yang lalu"
+        }
         else -> "Baru saja"
     }
 }
-

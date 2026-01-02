@@ -137,46 +137,40 @@ fun BottomTextButton(navController: NavHostController) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            , // Padding eksternal
-        contentAlignment = Alignment.Center // Pusatkan Column
+            .padding(bottom = 16.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Column(
+        Button(
+            onClick = {
+                navController.navigate(Routes.QUESTION)
+            },
             modifier = Modifier
-                .width(250.dp)
-                .background(
-                    color = colorResource(id = R.color.green),
-                    shape = RoundedCornerShape(100) // Bentuk rounded
-                )
-                .padding(16.dp), // Padding internal
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .height(56.dp)
+                .width(260.dp),
+            shape = RoundedCornerShape(50),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colorResource(id = R.color.green)
+            ),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 6.dp,
+                pressedElevation = 10.dp
+            )
         ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Tambah Pertanyaan",
+                tint = Color.Black,
+                modifier = Modifier.size(24.dp)
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
             Text(
                 text = "Tambah Pertanyaan",
                 color = Color.Black,
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.SemiBold
             )
-
-            Spacer(modifier = Modifier.height(8.dp)) // Jarak antara teks dan tombol
-
-            Button(
-                onClick = {
-                    navController.navigate(Routes.QUESTION)
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colorResource(id = R.color.greenlight)
-                ),
-                shape = RoundedCornerShape(50) // Tombol bulat
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Tambah",
-                    modifier = Modifier.size(30.dp),
-                    tint = Color.Black
-                )
-            }
         }
     }
 }
-
