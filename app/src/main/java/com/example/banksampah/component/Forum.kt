@@ -1,6 +1,7 @@
 package com.example.banksampah.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -207,6 +209,8 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        val maxLines = 3
+
         Column {
             Text(
                 text = post.title,
@@ -216,8 +220,27 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = post.body,
-                fontSize = 14.sp
+                fontSize = 14.sp,
+                maxLines = maxLines,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.clickable {
+                    navController.navigate(Routes.forumDetail(post.id))
+                }
             )
+
+            if (post.body.length > 120) { // ambang aman
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "(selengkapnya)",
+                    fontSize = 12.sp,
+                    color = colorResource(id = R.color.green),
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.clickable {
+                        navController.navigate(Routes.forumDetail(post.id))
+                    }
+                )
+            }
+
 
             // Penggunaan di ForumItem
             post.imageUrl?.let { imageUrl ->
