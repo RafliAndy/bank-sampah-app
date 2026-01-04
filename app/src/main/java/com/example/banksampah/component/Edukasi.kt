@@ -71,10 +71,3 @@ fun Edukasi(modifier: Modifier = Modifier, listTittle: ListTittle) {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun EdukasiPreview() {
-    BankSampahTheme {
-        Edukasi(listTittle = ListTittle(1, R.drawable.image1, "Apa Dampak Sampah terhadap Kesehatan?"))
-    }
-}

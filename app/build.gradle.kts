@@ -84,4 +84,10 @@ dependencies {
     // Coil Compose
     implementation ("io.coil-kt:coil-compose:2.2.2")
 
+    //
+    implementation("org.jsoup:jsoup:1.17.2")
+
+    //
+    implementation("androidx.compose.material:material-icons-extended:1.5.4")
+
 }
