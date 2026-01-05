@@ -15,11 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -37,11 +35,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.banksampah.R
 import com.example.banksampah.Routes
@@ -89,7 +85,6 @@ fun ForumList(navController: NavHostController) {
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        // PERBAIKAN: Gunakan LazyColumn dengan constraint yang benar
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -108,14 +103,12 @@ fun CloudinaryImage(
     contentDescription: String = "Post image"
 ) {
     if (imageUrl.isNullOrEmpty()) {
-        // Tidak menampilkan apa-apa jika tidak ada gambar
         return
     }
 
     var showError by remember { mutableStateOf(false) }
 
     if (showError) {
-        // Fallback jika gambar gagal dimuat
         Box(
             modifier = modifier
                 .background(Color.LightGray)
@@ -143,12 +136,11 @@ fun CloudinaryImage(
 
 @Composable
 fun ForumItem(post: ForumPost, navController: NavHostController) {
-
     var replyCount by remember { mutableStateOf(0) }
 
+    // Hitung jumlah balasan
     LaunchedEffect(post.id) {
         val repliesRef = FirebaseDatabase.getInstance().getReference("replies")
-
         repliesRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 var count = 0
@@ -165,37 +157,30 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
         })
     }
 
-        // Debug: print URL gambar ke log
-    println("DEBUG - Post ID: ${post.id}, Image URL: ${post.imageUrl}")
-
     Column(
         modifier = Modifier
             .background(colorResource(id = R.color.greenlight))
             .fillMaxWidth()
             .padding(16.dp)
     ) {
+        // Header dengan foto profil dan nama
         Row(
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(35.dp)
-                    .clip(CircleShape)
-                    .background(Color.LightGray)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Person Icon",
-                    modifier = Modifier
-                        .size(24.dp)
-                        .align(Alignment.Center),
-                    tint = Color.Black
-                )
-            }
+            // Gunakan komponen foto profil baru dengan badge admin
+            UserProfileImage(
+                uid = post.uid,
+                size = 40.dp,
+                showAdminBadge = true
+            )
+
             Spacer(modifier = Modifier.width(8.dp))
+
             Column {
-                Text(
-                    text = post.authorName,
+                // Gunakan komponen nama dengan badge admin
+                UserNameWithBadge(
+                    uid = post.uid,
+                    authorName = post.authorName,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -209,6 +194,7 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // Konten post
         val maxLines = 3
 
         Column {
@@ -228,7 +214,7 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
                 }
             )
 
-            if (post.body.length > 120) { // ambang aman
+            if (post.body.length > 120) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "(selengkapnya)",
@@ -241,11 +227,9 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
                 )
             }
 
-
-            // Penggunaan di ForumItem
+            // Gambar post (jika ada)
             post.imageUrl?.let { imageUrl ->
                 Spacer(modifier = Modifier.height(12.dp))
-
                 CloudinaryImage(
                     imageUrl = imageUrl,
                     modifier = Modifier
@@ -256,9 +240,9 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Tombol Balas dengan jumlah balasan
             Button(
                 onClick = {
-                    // Navigasi ke halaman detail menggunakan helper function
                     navController.navigate(Routes.forumDetail(post.id))
                 },
                 shape = RoundedCornerShape(24.dp),
@@ -293,7 +277,7 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
                             )
                     ) {
                         Text(
-                            text = replyCount.toString(), // Nanti bisa diganti dengan jumlah balasan dari Firebase
+                            text = replyCount.toString(),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.Black,
@@ -302,7 +286,6 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
                     }
                 }
             }
-
         }
     }
 }

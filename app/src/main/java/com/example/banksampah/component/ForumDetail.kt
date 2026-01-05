@@ -15,6 +15,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Send
+import com.example.banksampah.component.UserProfileImage
+import com.example.banksampah.component.UserNameWithBadge
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -372,25 +374,20 @@ fun PostDetail(post: ForumPost) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.LightGray)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Person Icon",
-                        modifier = Modifier
-                            .size(28.dp)
-                            .align(Alignment.Center),
-                        tint = Color.Black
-                    )
-                }
+                // Gunakan komponen foto profil baru dengan badge admin
+                UserProfileImage(
+                    uid = post.uid,
+                    size = 45.dp,
+                    showAdminBadge = true
+                )
+
                 Spacer(modifier = Modifier.width(12.dp))
+
                 Column {
-                    Text(
-                        text = post.authorName,
+                    // Gunakan komponen nama dengan badge admin
+                    UserNameWithBadge(
+                        uid = post.uid,
+                        authorName = post.authorName,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -490,27 +487,22 @@ fun ReplyItem(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(Color.LightGray)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier.align(Alignment.Center),
-                            tint = Color.Black
-                        )
-                    }
+                    // Gunakan komponen foto profil baru dengan badge admin
+                    UserProfileImage(
+                        uid = reply.uid,
+                        size = 32.dp,
+                        showAdminBadge = true
+                    )
 
                     Spacer(modifier = Modifier.width(8.dp))
 
                     Column {
-                        Text(
-                            text = reply.authorName.ifBlank { "Anonymous" },
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                        // Gunakan komponen nama dengan badge admin
+                        UserNameWithBadge(
+                            uid = reply.uid,
+                            authorName = reply.authorName,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = formatTimeAgo(reply.timestamp),
