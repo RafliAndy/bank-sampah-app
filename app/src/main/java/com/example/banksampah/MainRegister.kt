@@ -55,7 +55,6 @@ import com.example.banksampah.ui.theme.BankSampahTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 
-
 @Composable
 fun MainRegisterApp(navController: NavHostController, authViewModel: AuthViewModel) {
     Scaffold(bottomBar = { BottomBar(navController = navController, authViewModel = authViewModel) }) { paddingValues ->
@@ -77,11 +76,9 @@ fun MainRegisterApp(navController: NavHostController, authViewModel: AuthViewMod
                 MainTopBar(navController)
                 MainRegister(navController, authViewModel)
             }
-       }
+        }
     }
 }
-
-
 
 @Composable
 fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel) {
@@ -92,7 +89,6 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-
     var errorMessage by remember { mutableStateOf("") }
 
     val authState = authViewModel.authState.observeAsState()
@@ -101,30 +97,43 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
     val database = FirebaseDatabase.getInstance().reference.child("users")
     val auth = FirebaseAuth.getInstance()
 
-
     LaunchedEffect(authState.value) {
         when(authState.value) {
-            is AuthViewModel.AuthState.LoggedIn ->{
+            is AuthViewModel.AuthState.LoggedIn -> {
                 val uid = auth.currentUser?.uid ?: ""
+                val userEmail = auth.currentUser?.email ?: email
 
-                val userData = mapOf(
+                // UPDATED: Struktur data baru sesuai User model
+                val userData = hashMapOf(
+                    "uid" to uid,
                     "fullName" to fullName,
+                    "displayName" to fullName,           // displayName = fullName saat register
+                    "email" to userEmail,
+                    "profilePhotoUrl" to "",             // Kosong dulu, nanti diisi saat edit profile
+                    "isAdmin" to false,                  // User biasa bukan admin
+                    "createdAt" to System.currentTimeMillis(),
                     "address" to address,
                     "phoneNumber" to phoneNumber,
-                    "nik" to nik,
-                    "email" to email,
-                    "password" to password,
-                    "roles" to "user"
+                    "nik" to nik
                 )
 
                 database.child(uid).setValue(userData).addOnSuccessListener {
-                    navController.navigate(Routes.HOME){
+                    navController.navigate(Routes.HOME) {
                         popUpTo(0)
                     }
+                }.addOnFailureListener { exception ->
+                    Toast.makeText(
+                        context,
+                        "Gagal menyimpan data: ${exception.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
-            is AuthViewModel.AuthState.Error -> Toast.makeText(context,
-                (authState.value as AuthViewModel.AuthState.Error).message, Toast.LENGTH_SHORT).show()
+            is AuthViewModel.AuthState.Error -> Toast.makeText(
+                context,
+                (authState.value as AuthViewModel.AuthState.Error).message,
+                Toast.LENGTH_SHORT
+            ).show()
             else -> Unit
         }
     }
@@ -136,13 +145,11 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Judul Form
         Text(
             text = "Formulir Pendaftaran Nasabah",
             style = MaterialTheme.typography.headlineSmall,
         )
 
-        // Field Nama Lengkap
         Spacer(modifier = Modifier.height(10.dp))
         OutlinedTextField(
             value = fullName,
@@ -150,7 +157,7 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
             label = { Text("Masukan Nama Lengkap", color = colorResource(id = R.color.green)) },
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Default.Person, // Atau ganti dengan ikon yang lebih cocok
+                    imageVector = Icons.Default.Person,
                     contentDescription = "Nama",
                     tint = colorResource(id = R.color.green)
                 )
@@ -165,10 +172,8 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp)
-
         )
 
-        // Field Alamat
         Spacer(modifier = Modifier.height(10.dp))
         OutlinedTextField(
             value = address,
@@ -176,7 +181,7 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
             label = { Text("Masukan Alamat", color = colorResource(id = R.color.green)) },
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Default.Home, // Atau ganti dengan ikon yang lebih cocok
+                    imageVector = Icons.Default.Home,
                     contentDescription = "Alamat",
                     tint = colorResource(id = R.color.green)
                 )
@@ -191,10 +196,8 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp)
-
         )
 
-        // Field Nomor Telepon
         Spacer(modifier = Modifier.height(10.dp))
         OutlinedTextField(
             value = phoneNumber,
@@ -202,7 +205,7 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
             label = { Text("Masukan No.Telp", color = colorResource(id = R.color.green)) },
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Default.Call, // Atau ganti dengan ikon yang lebih cocok
+                    imageVector = Icons.Default.Call,
                     contentDescription = "Telp",
                     tint = colorResource(id = R.color.green)
                 )
@@ -217,10 +220,8 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp)
-
         )
 
-        // Field NIK
         Spacer(modifier = Modifier.height(10.dp))
         OutlinedTextField(
             value = nik,
@@ -228,7 +229,7 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
             label = { Text("Masukkan NIK", color = colorResource(id = R.color.green)) },
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Default.AccountBox, // Atau ganti dengan ikon yang lebih cocok
+                    imageVector = Icons.Default.AccountBox,
                     contentDescription = "Nik",
                     tint = colorResource(id = R.color.green)
                 )
@@ -243,7 +244,6 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp)
-
         )
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -253,8 +253,8 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
             label = { Text("Masukkan Email", color = colorResource(id = R.color.green)) },
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Default.Email, // Atau ganti dengan ikon yang lebih cocok
-                    contentDescription = "Nik",
+                    imageVector = Icons.Default.Email,
+                    contentDescription = "Email",
                     tint = colorResource(id = R.color.green)
                 )
             },
@@ -268,11 +268,8 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp)
-
         )
 
-
-        // Field Password
         Spacer(modifier = Modifier.height(10.dp))
         OutlinedTextField(
             value = password,
@@ -280,7 +277,7 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
             label = { Text("Masukkan Password", color = colorResource(id = R.color.green)) },
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Default.Lock, // Atau ganti dengan ikon yang lebih cocok
+                    imageVector = Icons.Default.Lock,
                     contentDescription = "Password",
                     tint = colorResource(id = R.color.green)
                 )
@@ -295,14 +292,14 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp)
-
         )
 
-        // Tombol Daftar
         Spacer(modifier = Modifier.height(20.dp))
         Button(
             onClick = {
-                if (fullName.isNotEmpty() && address.isNotEmpty() && phoneNumber.isNotEmpty() && nik.isNotEmpty() && email.isNotEmpty() && password.isNotEmpty()){
+                if (fullName.isNotEmpty() && address.isNotEmpty() &&
+                    phoneNumber.isNotEmpty() && nik.isNotEmpty() &&
+                    email.isNotEmpty() && password.isNotEmpty()) {
                     authViewModel.signup(email, password)
                 } else {
                     errorMessage = "Semua data harus diisi"
@@ -310,8 +307,7 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
             },
             modifier = Modifier
                 .width(150.dp)
-                .height(50.dp)
-                ,
+                .height(50.dp),
             shape = RoundedCornerShape(50),
             colors = ButtonDefaults.buttonColors(
                 containerColor = colorResource(id = R.color.green),
@@ -320,7 +316,8 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
         ) {
             Text("Daftar", fontSize = 16.sp)
         }
-        if (errorMessage.isNotEmpty()){
+
+        if (errorMessage.isNotEmpty()) {
             Text(
                 text = errorMessage,
                 color = Color.Red,
@@ -328,6 +325,7 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
+
         Spacer(modifier = Modifier.height(40.dp))
         Row(
             horizontalArrangement = Arrangement.Center,
@@ -339,16 +337,15 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
                 fontSize = 16.sp
             )
             TextButton(
-                onClick = {navController.navigate(Routes.MAIN_LOGIN)}
+                onClick = { navController.navigate(Routes.MAIN_LOGIN) }
             ) {
                 Text(
-                    text = "Login Serkarang",
+                    text = "Login Sekarang",
                     color = colorResource(id = R.color.green),
                     fontSize = 18.sp
                 )
             }
         }
-
     }
 }
 

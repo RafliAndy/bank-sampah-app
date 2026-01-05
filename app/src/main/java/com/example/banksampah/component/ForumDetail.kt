@@ -1,8 +1,10 @@
 package com.example.banksampah
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -10,8 +12,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -25,6 +29,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.banksampah.component.CloudinaryImage
 import com.example.banksampah.component.MainTopBar
@@ -32,11 +37,13 @@ import com.example.banksampah.component.formatTimeAgo
 import com.example.banksampah.data.ForumPost
 import com.example.banksampah.data.ForumReply
 import com.example.banksampah.model.AuthViewModel
+import com.example.banksampah.viewmodel.UserForumViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+
 
 @Composable
 fun ForumDetail(
@@ -50,15 +57,31 @@ fun ForumDetail(
     var post by remember { mutableStateOf<ForumPost?>(null) }
     var replies by remember { mutableStateOf<List<ForumReply>>(emptyList()) }
     var replyText by remember { mutableStateOf("") }
-    var replyingTo by remember { mutableStateOf<Pair<String?, String?>>(null to null) } // (replyId, authorName)
+    var replyingTo by remember { mutableStateOf<Pair<String?, String?>>(null to null) }
+    var isAdmin by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     val currentUser = FirebaseAuth.getInstance().currentUser
     var currentUserName by remember { mutableStateOf("") }
 
+    // ViewModel untuk handle delete
+    val forumViewModel: UserForumViewModel = viewModel()
+    val deleteState by forumViewModel.deleteState.collectAsState()
+
+    // Check if user is admin
+    LaunchedEffect(currentUser?.uid) {
+        currentUser?.uid?.let { uid ->
+            val adminRef = FirebaseDatabase.getInstance().getReference("users/$uid/isAdmin")
+            adminRef.get().addOnSuccessListener { snapshot ->
+                isAdmin = snapshot.getValue(Boolean::class.java) ?: false
+            }
+        }
+    }
+
     // Dapatkan nama user dari Firebase
     LaunchedEffect(currentUser?.uid) {
         currentUser?.uid?.let { uid ->
-            val userRef = FirebaseDatabase.getInstance().getReference("users/$uid/fullName")
+            val userRef = FirebaseDatabase.getInstance().getReference("users/$uid/displayName")
             userRef.get().addOnSuccessListener { snapshot ->
                 currentUserName = snapshot.getValue(String::class.java)
                     ?: currentUser.displayName
@@ -82,7 +105,7 @@ fun ForumDetail(
         })
     }
 
-    // Load replies - PERBAIKAN: Load semua replies tanpa filter
+    // Load replies
     LaunchedEffect(postId) {
         val repliesRef = FirebaseDatabase.getInstance().getReference("replies")
 
@@ -95,25 +118,39 @@ fun ForumDetail(
                         if (it.id.isEmpty()) {
                             it.id = replySnapshot.key ?: ""
                         }
-                        // Filter hanya reply untuk post ini
                         if (it.postId == postId) {
                             replyList.add(it)
                         }
                     }
                 }
-                // Urutkan berdasarkan timestamp
                 replies = replyList.sortedBy { it.timestamp }
-
-                // Debug log
-                println("DEBUG - Total replies loaded: ${replyList.size}")
-                replyList.forEach { r ->
-                    println("DEBUG - Reply: id=${r.id}, postId=${r.postId}, parentId=${r.parentReplyId}, level=${r.level}")
-                }
             }
-            override fun onCancelled(error: DatabaseError) {
-                println("DEBUG - Error loading replies: ${error.message}")
-            }
+            override fun onCancelled(error: DatabaseError) {}
         })
+    }
+
+    // Handle delete result
+    LaunchedEffect(deleteState) {
+        when (val state = deleteState) {
+            is UserForumViewModel.DeleteState.Success -> {
+                Toast.makeText(
+                    context,
+                    "Postingan berhasil dihapus",
+                    Toast.LENGTH_SHORT
+                ).show()
+                forumViewModel.resetDeleteState()
+                navController.popBackStack()
+            }
+            is UserForumViewModel.DeleteState.Error -> {
+                Toast.makeText(
+                    context,
+                    state.message,
+                    Toast.LENGTH_SHORT
+                ).show()
+                forumViewModel.resetDeleteState()
+            }
+            else -> Unit
+        }
     }
 
     LaunchedEffect(authState.value) {
@@ -142,19 +179,12 @@ fun ForumDetail(
                             parentReplyId = replyingTo.first,
                             body = replyText,
                             uid = currentUser.uid,
-                            authorName = currentUserName, // Gunakan nama yang sudah diload
+                            authorName = currentUserName,
                             timestamp = System.currentTimeMillis(),
                             level = if (replyingTo.first == null) 0 else 1
                         )
 
-                        println("DEBUG - Sending reply: $newReply")
-
-                        newReplyRef.setValue(newReply).addOnSuccessListener {
-                            println("DEBUG - Reply sent successfully")
-                        }.addOnFailureListener { e ->
-                            println("DEBUG - Failed to send reply: ${e.message}")
-                        }
-
+                        newReplyRef.setValue(newReply)
                         replyText = ""
                         replyingTo = null to null
                     }
@@ -182,7 +212,13 @@ fun ForumDetail(
                     color = Color.Black
                 )
 
-                TopBar(navController)
+                TopBar(
+                    navController = navController,
+                    post = post,
+                    currentUser = currentUser,
+                    isAdmin = isAdmin,
+                    onDeleteClick = { showDeleteDialog = true }
+                )
 
                 Column(
                     modifier = Modifier
@@ -213,23 +249,58 @@ fun ForumDetail(
             }
         }
     }
+
+    // Delete confirmation dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Hapus Postingan") },
+            text = {
+                Text("Apakah Anda yakin ingin menghapus postingan ini? Semua balasan juga akan dihapus.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        forumViewModel.deletePost(postId)
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color.Red
+                    )
+                ) {
+                    Text("Hapus")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
 }
 
 @Composable
-fun TopBar(navController: NavHostController) {
+fun TopBar(
+    navController: NavHostController,
+    post: ForumPost?,
+    currentUser: com.google.firebase.auth.FirebaseUser?,
+    isAdmin: Boolean,
+    onDeleteClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(colorResource(id = R.color.green))
-            .padding(10.dp),
-        horizontalArrangement = Arrangement.Start,
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Back button and title
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .wrapContentWidth()
-                .padding(vertical = 5.dp)
+                .weight(1f)
                 .clickable {
                     navController.popBackStack()
                 }
@@ -237,16 +308,55 @@ fun TopBar(navController: NavHostController) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
-                modifier = Modifier.size(30.dp),
-                tint = Color.Black
+                modifier = Modifier.size(26.dp),
+                tint = Color.White
             )
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = "Detail Forum",
                 color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 2.dp)
             )
+        }
+
+        // Delete Button dengan Elevation
+        if (post != null && (post.uid == currentUser?.uid || isAdmin)) {
+            Card(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .clickable(
+                        onClick = onDeleteClick
+                    ),
+                shape = RoundedCornerShape(20.dp),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 3.dp,
+                    pressedElevation = 1.dp
+                ),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.Red.copy(alpha = 0.9f)
+                )
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete Post",
+                        modifier = Modifier.size(18.dp),
+                        tint = Color.White
+                    )
+                    Text(
+                        text = "Hapus",
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
         }
     }
 }
@@ -336,7 +446,6 @@ fun RepliesList(
     }
 }
 
-
 @Composable
 fun ReplyItem(
     reply: ForumReply,
@@ -346,10 +455,9 @@ fun ReplyItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min) // ⭐ KUNCI UTAMA
+            .height(IntrinsicSize.Min)
     ) {
-
-        // 🔗 GARIS PENGHUBUNG (VERTICAL THREAD LINE)
+        // Garis penghubung (vertical thread line)
         if (level > 0) {
             Box(
                 modifier = Modifier
@@ -379,7 +487,6 @@ fun ReplyItem(
             )
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
-
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -437,7 +544,6 @@ fun ReplyItem(
         }
     }
 }
-
 
 @Composable
 fun ReplyInputBar(
@@ -538,7 +644,7 @@ fun RenderReplies(
             level = level
         )
 
-        // 🔁 RECURSIVE CALL
+        // Recursive call untuk nested replies
         RenderReplies(
             replies = replies,
             parentId = reply.id,

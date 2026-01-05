@@ -18,8 +18,9 @@ object Routes {
     const val MAIN_FORUM = "forum"
     const val QUESTION = "question"
     const val FORUM_DETAIL = "forum_detail/{postId}"
+    const val EDIT_PROFILE = "edit_profile"  // NEW
 
-    // Helper function untuk membuat route dengan parameter
+    // Helper functions
     fun forumDetail(postId: String) = "forum_detail/$postId"
 }
 
@@ -51,7 +52,7 @@ fun AppNavigation() {
             MainProfileApp(navController, authViewModel)
         }
 
-        // Route baru untuk detail forum dengan parameter postId
+        // Forum Detail with parameter
         composable(
             route = Routes.FORUM_DETAIL,
             arguments = listOf(
@@ -66,6 +67,11 @@ fun AppNavigation() {
                 authViewModel = authViewModel,
                 postId = postId
             )
+        }
+
+        // NEW: Edit Profile Screen
+        composable(Routes.EDIT_PROFILE) {
+            EditProfileScreen(navController)
         }
     }
 }

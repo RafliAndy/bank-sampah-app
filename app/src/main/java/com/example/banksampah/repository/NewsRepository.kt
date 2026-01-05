@@ -44,7 +44,7 @@ class NewsRepository {
             val articles = doc.select("article")
             Log.d(TAG, "Found ${articles.size} articles")
 
-            articles.take(6).forEach { article ->
+            articles.take(12).forEach { article ->
                 try {
                     val linkElement = article.select("a[href]").firstOrNull()
                     val link = linkElement?.attr("abs:href") ?: ""
