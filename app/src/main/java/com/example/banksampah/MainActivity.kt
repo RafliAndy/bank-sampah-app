@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,16 +56,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.banksampah.component.Berita
 import com.example.banksampah.component.BottomBar
-import com.example.banksampah.component.Edukasi
 import com.example.banksampah.component.LoginMenu
 import com.example.banksampah.component.MainTopBar
 import com.example.banksampah.model.AuthViewModel
-import com.example.banksampah.data.dummyListTittle
 import com.example.banksampah.repository.NewsRepository
 import com.example.banksampah.ui.theme.BankSampahTheme
 import com.example.banksampah.viewmodel.NewsViewModel
-
-
+// ===== TAMBAHKAN IMPORT INI =====
+import com.example.banksampah.component.MainEdukasiSection
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,11 +72,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             BankSampahTheme {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
-                        ) {
-                           AppNavigation()
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    AppNavigation()
                 }
             }
         }
@@ -89,27 +88,26 @@ fun BankSampahApp(navController: NavHostController, authViewModel: AuthViewModel
 
     val authState = authViewModel.authState.observeAsState()
 
-    Scaffold (bottomBar = { BottomBar(navController = navController, authViewModel = authViewModel)}) { paddingValues ->
-        Column (
+    Scaffold(bottomBar = { BottomBar(navController = navController, authViewModel = authViewModel) }) { paddingValues ->
+        Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(paddingValues)
         ) {
             MainTopBar(navController)
-            Column (modifier = Modifier
+            Column(modifier = Modifier
                 .verticalScroll(rememberScrollState())
                 .weight(1f)
-                .padding(bottom = 12.dp))   {
-
-
-                if (authState.value is AuthViewModel.AuthState.LoggedOut){
+                .padding(bottom = 12.dp)
+            ) {
+                if (authState.value is AuthViewModel.AuthState.LoggedOut) {
                     LoginMenu(navController)
                 }
                 NewsSection()
-                MainEdukasi()
+
+                MainEdukasiSection(navController = navController)
             }
         }
     }
-
 }
 
 @Preview(showBackground = true)
@@ -117,19 +115,6 @@ fun BankSampahApp(navController: NavHostController, authViewModel: AuthViewModel
 fun BankSampahAppPreview() {
     BankSampahTheme {
         AppNavigation()
-    }
-}
-
-
-@Composable
-fun MainEdukasi() {
-    Column (modifier = Modifier.padding(start = 16.dp, end = 16.dp)) {
-        Text("Ketahuilah!!!",fontWeight = FontWeight.Bold, fontSize = 15.sp)
-        Column (verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            dummyListTittle.forEach {
-                Edukasi(listTittle = it)
-            }
-        }
     }
 }
 
