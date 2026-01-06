@@ -25,13 +25,19 @@ object Routes {
 
     // Edukasi Routes
     const val EDUKASI_DETAIL = "edukasi_detail/{edukasiId}"
-    const val TENTANG_BANK_SAMPAH = "tentang_bank_sampah"
     const val ADMIN_EDUKASI = "admin_edukasi"
-    const val ADMIN_GALLERY = "admin_gallery"
+
+    // Album/Gallery Routes (Tentang Bank Sampah)
+    const val TENTANG_BANK_SAMPAH = "tentang_bank_sampah"
+    const val ALBUM_DETAIL = "album_detail/{albumId}"
+    const val ADMIN_ALBUMS = "admin_albums"
+    const val ADMIN_ALBUM_PHOTOS = "admin_album_photos/{albumId}"
 
     // Helper functions
     fun forumDetail(postId: String) = "forum_detail/$postId"
     fun edukasiDetail(edukasiId: String) = "edukasi_detail/$edukasiId"
+    fun albumDetail(albumId: String) = "album_detail/$albumId"
+    fun adminAlbumPhotos(albumId: String) = "admin_album_photos/$albumId"
 }
 
 @Composable
@@ -107,19 +113,53 @@ fun AppNavigation() {
             )
         }
 
-        // Tentang Bank Sampah - Gallery View
-        composable(Routes.TENTANG_BANK_SAMPAH) {
-            TentangBankSampahScreen(navController = navController)
-        }
-
         // Admin Edukasi Management (Admin Only)
         composable(Routes.ADMIN_EDUKASI) {
             AdminEdukasiScreen(navController = navController)
         }
 
-        // Admin Gallery Management (Admin Only)
-        composable(Routes.ADMIN_GALLERY) {
-            AdminGalleryScreen(navController = navController)
+        // ============ ALBUM/GALLERY ROUTES (TENTANG BANK SAMPAH) ============
+
+        // List Album - User View
+        composable(Routes.TENTANG_BANK_SAMPAH) {
+            TentangBankSampahScreen(navController = navController)
+        }
+
+        // Album Detail - User View
+        composable(
+            route = Routes.ALBUM_DETAIL,
+            arguments = listOf(
+                navArgument("albumId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val albumId = backStackEntry.arguments?.getString("albumId") ?: ""
+            AlbumDetailScreen(
+                navController = navController,
+                albumId = albumId
+            )
+        }
+
+        // Admin: Manage Albums
+        composable(Routes.ADMIN_ALBUMS) {
+            AdminAlbumsScreen(navController = navController)
+        }
+
+        // Admin: Manage Photos in Album
+        composable(
+            route = Routes.ADMIN_ALBUM_PHOTOS,
+            arguments = listOf(
+                navArgument("albumId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val albumId = backStackEntry.arguments?.getString("albumId") ?: ""
+            AdminAlbumPhotosScreen(
+                navController = navController,
+                albumId = albumId
+            )
         }
     }
 }

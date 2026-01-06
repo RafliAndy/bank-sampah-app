@@ -21,5 +21,5 @@ data class GalleryItem(
 // Edukasi default "Tentang Bank Sampah"
 object EdukasiConstants {
     const val TENTANG_BANK_SAMPAH_ID = "tentang_bank_sampah"
-    const val TENTANG_BANK_SAMPAH_TITLE = "Tentang Bank Sampah"
+    const val TENTANG_BANK_SAMPAH_TITLE = "Tentang Bank Sampah Rawa Panjang"
 }

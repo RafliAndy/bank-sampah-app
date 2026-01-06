@@ -1,5 +1,6 @@
 package com.example.banksampah.component
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -237,16 +238,13 @@ fun TentangBankSampahCard(onClick: () -> Unit) {
             Box(
                 modifier = Modifier
                     .size(61.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.White)
-                    .border(1.dp, Color.White, RoundedCornerShape(8.dp)),
+                    .clip(RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.PhotoLibrary,
-                    contentDescription = null,
-                    modifier = Modifier.size(36.dp),
-                    tint = colorResource(id = R.color.green)
+                Image(
+                    painter = painterResource(id = R.drawable.logo2),
+                    contentDescription = "Logo",
+                    modifier = Modifier.fillMaxSize()
                 )
             }
 

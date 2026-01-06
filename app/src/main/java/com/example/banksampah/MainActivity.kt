@@ -45,7 +45,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -85,36 +87,47 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun BankSampahApp(navController: NavHostController, authViewModel: AuthViewModel) {
-
     val authState = authViewModel.authState.observeAsState()
 
-    Scaffold(bottomBar = { BottomBar(navController = navController, authViewModel = authViewModel) }) { paddingValues ->
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(paddingValues)
+    Scaffold(
+        bottomBar = {
+            BottomBar(navController = navController, authViewModel = authViewModel)
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
-            MainTopBar(navController)
-            Column(modifier = Modifier
-                .verticalScroll(rememberScrollState())
-                .weight(1f)
-                .padding(bottom = 12.dp)
-            ) {
-                if (authState.value is AuthViewModel.AuthState.LoggedOut) {
-                    LoginMenu(navController)
-                }
-                NewsSection()
+            // Background image
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "background",
+                modifier = Modifier.fillMaxSize(),
+            )
 
-                MainEdukasiSection(navController = navController)
+            // Konten utama
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                MainTopBar(navController)
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 12.dp)
+                ) {
+                    if (authState.value is AuthViewModel.AuthState.LoggedOut) {
+                        LoginMenu(navController)
+                    }
+
+                    NewsSection()
+                    MainEdukasiSection(navController = navController)
+                }
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun BankSampahAppPreview() {
-    BankSampahTheme {
-        AppNavigation()
     }
 }
 
