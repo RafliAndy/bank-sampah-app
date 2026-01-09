@@ -15,6 +15,7 @@ object Routes {
     const val HOME = "home"
     const val MAIN_LOGIN = "login"
     const val MAIN_REGISTER = "register"
+    const val FORGOT_PASSWORD = "forgot_password"
     const val PROFILE = "profile"
     const val EDIT_PROFILE = "edit_profile"
 
@@ -60,6 +61,10 @@ fun AppNavigation() {
 
         composable(Routes.MAIN_REGISTER) {
             MainRegisterApp(navController, authViewModel)
+        }
+
+        composable(Routes.FORGOT_PASSWORD) {
+            ForgotPasswordApp(navController, authViewModel)
         }
 
         composable(Routes.PROFILE) {
