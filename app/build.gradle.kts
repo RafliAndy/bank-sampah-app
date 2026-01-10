@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,10 +8,19 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+// Load secrets dari secrets.properties
+val secretsPropertiesFile = rootProject.file("secrets.properties")
+val secretsProperties = Properties()
+if (secretsPropertiesFile.exists()) {
+    secretsProperties.load(FileInputStream(secretsPropertiesFile))
+} else {
+    // Fallback untuk CI/CD atau jika file tidak ada
+    println("WARNING: secrets.properties not found!")
+}
+
 android {
     namespace = "com.example.banksampah"
     compileSdk = 35
-
 
     defaultConfig {
         applicationId = "com.example.banksampah"
@@ -18,6 +30,11 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Inject secrets ke BuildConfig
+        buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"${secretsProperties.getProperty("CLOUDINARY_CLOUD_NAME", "")}\"")
+        buildConfigField("String", "CLOUDINARY_API_KEY", "\"${secretsProperties.getProperty("CLOUDINARY_API_KEY", "")}\"")
+        buildConfigField("String", "CLOUDINARY_API_SECRET", "\"${secretsProperties.getProperty("CLOUDINARY_API_SECRET", "")}\"")
     }
 
     buildTypes {
@@ -29,15 +46,19 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
     }
+
     buildFeatures {
         compose = true
+        buildConfig = true  // Enable BuildConfig
     }
 }
 
@@ -82,12 +103,11 @@ dependencies {
     implementation("com.cloudinary:cloudinary-android:2.3.1")
 
     // Coil Compose
-    implementation ("io.coil-kt:coil-compose:2.2.2")
+    implementation("io.coil-kt:coil-compose:2.2.2")
 
-    //
+    // JSoup
     implementation("org.jsoup:jsoup:1.17.2")
 
-    //
+    // Material Icons
     implementation("androidx.compose.material:material-icons-extended:1.5.4")
-
 }
