@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class UserForumViewModel : ViewModel() {
+class ForumViewModel : ViewModel() {
 
     private val repository = ForumRepository()
 

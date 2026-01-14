@@ -114,15 +114,15 @@ fun TentangBankSampahScreen(navController: NavHostController) {
                                         .background(
                                             brush = Brush.horizontalGradient(
                                                 colors = listOf(
-                                                    colorResource(id = R.color.green),
-                                                    colorResource(id = R.color.darkgreen)
+                                                    colorResource(id = R.color.darkgreen),
+                                                    colorResource(id = R.color.green)
                                                 )
                                             ),
-                                            shape = RoundedCornerShape(12.dp)
+                                            shape = RoundedCornerShape(24.dp)
                                         )
                                         .shadow(
                                             elevation = 4.dp,
-                                            shape = RoundedCornerShape(12.dp)
+                                            shape = RoundedCornerShape(24.dp)
                                         )
                                 ) {
                                     Row(

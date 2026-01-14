@@ -1,7 +1,6 @@
 package com.example.banksampah.component
 
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,11 +24,11 @@ import androidx.navigation.NavHostController
 import com.example.banksampah.R
 import com.example.banksampah.Routes
 import com.example.banksampah.data.ForumPost
-import com.example.banksampah.viewmodel.UserForumViewModel
+import com.example.banksampah.viewmodel.ForumViewModel
 
 @Composable
 fun UserForumListSection(navController: NavHostController) {
-    val viewModel: UserForumViewModel = viewModel()
+    val viewModel: ForumViewModel = viewModel()
     val postsState by viewModel.postsState.collectAsState()
     val deleteState by viewModel.deleteState.collectAsState()
     val context = LocalContext.current
@@ -42,11 +41,11 @@ fun UserForumListSection(navController: NavHostController) {
     // Handle delete result
     LaunchedEffect(deleteState) {
         when (val state = deleteState) {
-            is UserForumViewModel.DeleteState.Success -> {
+            is ForumViewModel.DeleteState.Success -> {
                 Toast.makeText(context, "Postingan berhasil dihapus", Toast.LENGTH_SHORT).show()
                 viewModel.resetDeleteState()
             }
-            is UserForumViewModel.DeleteState.Error -> {
+            is ForumViewModel.DeleteState.Error -> {
                 Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
                 viewModel.resetDeleteState()
             }
@@ -77,11 +76,11 @@ fun UserForumListSection(navController: NavHostController) {
 
         // Content based on state
         when (val state = postsState) {
-            is UserForumViewModel.PostsState.Loading -> {
+            is ForumViewModel.PostsState.Loading -> {
                 LoadingSection()
             }
 
-            is UserForumViewModel.PostsState.Success -> {
+            is ForumViewModel.PostsState.Success -> {
                 if (state.posts.isEmpty()) {
                     EmptySection()
                 } else {
@@ -98,18 +97,18 @@ fun UserForumListSection(navController: NavHostController) {
                                 onDeleteClick = {
                                     viewModel.deletePost(post.id)
                                 },
-                                isDeleting = deleteState is UserForumViewModel.DeleteState.Deleting
+                                isDeleting = deleteState is ForumViewModel.DeleteState.Deleting
                             )
                         }
                     }
                 }
             }
 
-            is UserForumViewModel.PostsState.Empty -> {
+            is ForumViewModel.PostsState.Empty -> {
                 EmptySection(message = state.message)
             }
 
-            is UserForumViewModel.PostsState.Error -> {
+            is ForumViewModel.PostsState.Error -> {
                 ErrorSection(
                     message = state.message,
                     onRetry = { viewModel.loadMyPosts() }
