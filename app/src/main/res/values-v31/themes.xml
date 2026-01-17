@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
     <style name="Theme.MySplashScreen" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/green</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/trash3</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/logo3</item>
+        <item name="windowSplashScreenAnimationDuration">1000</item>
+        <item name="android:windowSplashScreenBrandingImage">@drawable/splash</item>
         <item name="postSplashScreenTheme">@style/Theme.BankSampah</item>
-        <item name="android:windowSplashScreenBrandingImage">@drawable/branding</item>
-
     </style>
 </resources>

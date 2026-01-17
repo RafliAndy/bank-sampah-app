@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Splash Screen Theme -->
     <style name="Theme.MySplashScreen" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/green</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/trash3</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/logo3</item>
+        <item name="windowSplashScreenAnimationDuration">1000</item>
         <item name="postSplashScreenTheme">@style/Theme.BankSampah</item>
-
     </style>
-    <style name="Theme.BankSampah" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Main App Theme -->
+    <style name="Theme.BankSampah" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/green</item>
+        <item name="android:navigationBarColor">@color/green</item>
+    </style>
 </resources>
