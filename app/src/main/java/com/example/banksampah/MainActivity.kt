@@ -23,6 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WifiOff
@@ -141,12 +142,28 @@ fun NewsSection() {
     }
 
     Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            text = "Berita Terkini Terkait Sampah di Indonesia!",
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Newspaper,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = colorResource(id = R.color.green)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Berita Terkini Terkait Sampah di Indonesia",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         when (val state = newsState) {
             is NewsViewModel.NewsState.Loading -> {
@@ -157,7 +174,7 @@ fun NewsSection() {
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(state.news) { item ->
-                        Berita(news = item)
+                        Berita(news = item) // Gunakan komponen yang diperbaiki
                     }
                 }
             }
