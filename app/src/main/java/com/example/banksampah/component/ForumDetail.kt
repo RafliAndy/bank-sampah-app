@@ -13,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Send
 import com.example.banksampah.component.UserProfileImage
 import com.example.banksampah.component.UserNameWithBadge
 import androidx.compose.material3.*
@@ -36,14 +35,17 @@ import com.example.banksampah.component.MainTopBar
 import com.example.banksampah.component.formatTimeAgo
 import com.example.banksampah.data.ForumPost
 import com.example.banksampah.data.ForumReply
-import com.example.banksampah.model.AuthViewModel
+import com.example.banksampah.viewmodel.AuthViewModel
 import com.example.banksampah.viewmodel.ForumViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import com.example.banksampah.repository.NotificationRepository
 
 @Composable
 fun ForumDetail(
@@ -184,7 +186,40 @@ fun ForumDetail(
                             level = if (replyingTo.first == null) 0 else 1
                         )
 
-                        newReplyRef.setValue(newReply)
+                        newReplyRef.setValue(newReply).addOnSuccessListener {
+                            // ===== BUAT NOTIFIKASI =====
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val notificationRepo = NotificationRepository()
+
+                                if (replyingTo.first == null) {
+                                    // Reply langsung ke post - notifikasi ke pemilik post
+                                    post?.let { p ->
+                                        notificationRepo.createPostReplyNotification(
+                                            postId = postId,
+                                            postOwnerId = p.uid,
+                                            replyId = newReply.id
+                                        )
+                                    }
+                                } else {
+                                    // Reply ke reply - notifikasi ke pemilik reply yang dibalas
+                                    repliesRef.child(replyingTo.first!!).get().addOnSuccessListener { snapshot ->
+                                        val parentReplyOwnerId = snapshot.child("uid").getValue(String::class.java)
+
+                                        if (parentReplyOwnerId != null) {
+                                            CoroutineScope(Dispatchers.IO).launch {
+                                                notificationRepo.createNestedReplyNotification(
+                                                    postId = postId,
+                                                    parentReplyId = replyingTo.first!!,
+                                                    parentReplyOwnerId = parentReplyOwnerId,
+                                                    newReplyId = newReply.id
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         replyText = ""
                         replyingTo = null to null
                     }

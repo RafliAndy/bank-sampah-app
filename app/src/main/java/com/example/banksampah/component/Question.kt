@@ -54,11 +54,10 @@ import coil.compose.AsyncImage
 import com.example.banksampah.R
 import com.example.banksampah.Routes
 import com.example.banksampah.data.ForumPost
-import com.example.banksampah.model.uploadToCloudinary
+import com.example.banksampah.viewmodel.uploadToCloudinary
 import com.example.banksampah.ui.theme.BankSampahTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.storage.FirebaseStorage
 import java.util.UUID
 
 @Composable

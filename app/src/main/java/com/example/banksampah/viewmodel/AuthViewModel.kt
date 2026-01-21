@@ -1,4 +1,4 @@
-package com.example.banksampah.model
+package com.example.banksampah.viewmodel
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData

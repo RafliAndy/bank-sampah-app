@@ -2,7 +2,6 @@ package com.example.banksampah
 
 import android.widget.Toast
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -24,7 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.example.banksampah.component.BottomBar
 import com.example.banksampah.component.MainTopBar
-import com.example.banksampah.model.AuthViewModel
+import com.example.banksampah.viewmodel.AuthViewModel
 
 @Composable
 fun ForgotPasswordApp(navController: NavHostController, authViewModel: AuthViewModel) {

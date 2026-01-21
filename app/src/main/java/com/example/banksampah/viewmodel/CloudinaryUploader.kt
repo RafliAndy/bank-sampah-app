@@ -1,4 +1,4 @@
-package com.example.banksampah.model
+package com.example.banksampah.viewmodel
 
 import android.net.Uri
 import com.cloudinary.android.MediaManager

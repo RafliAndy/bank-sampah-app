@@ -3,7 +3,7 @@ package com.example.banksampah.repository
 import android.net.Uri
 import com.example.banksampah.data.ActivityAlbum
 import com.example.banksampah.data.AlbumPhoto
-import com.example.banksampah.model.uploadToCloudinary
+import com.example.banksampah.viewmodel.uploadToCloudinary
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase

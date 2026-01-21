@@ -22,7 +22,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.banksampah.R
 import com.example.banksampah.Routes
 import com.example.banksampah.data.BottomBarItem
-import com.example.banksampah.model.AuthViewModel
+import com.example.banksampah.viewmodel.AuthViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person

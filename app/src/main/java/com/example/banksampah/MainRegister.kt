@@ -50,7 +50,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.banksampah.component.BottomBar
 import com.example.banksampah.component.MainTopBar
-import com.example.banksampah.model.AuthViewModel
+import com.example.banksampah.viewmodel.AuthViewModel
 import com.example.banksampah.ui.theme.BankSampahTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase

@@ -53,7 +53,7 @@ import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.example.banksampah.component.BottomBar
 import com.example.banksampah.component.UserForumListSection
-import com.example.banksampah.model.AuthViewModel
+import com.example.banksampah.viewmodel.AuthViewModel
 import com.example.banksampah.viewmodel.ProfileViewModel
 
 @Composable

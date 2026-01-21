@@ -8,7 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.banksampah.component.MainQuestion
-import com.example.banksampah.model.AuthViewModel
+import com.example.banksampah.viewmodel.AuthViewModel
 
 object Routes {
     // Main Routes
@@ -18,6 +18,8 @@ object Routes {
     const val FORGOT_PASSWORD = "forgot_password"
     const val PROFILE = "profile"
     const val EDIT_PROFILE = "edit_profile"
+    const val NOTIFICATIONS = "notifications"
+
 
     // Forum Routes
     const val MAIN_FORUM = "forum"
@@ -73,6 +75,9 @@ fun AppNavigation() {
 
         composable(Routes.EDIT_PROFILE) {
             EditProfileScreen(navController)
+        }
+        composable(Routes.NOTIFICATIONS) {
+            NotificationScreen(navController = navController)
         }
 
         // ============ FORUM ROUTES ============

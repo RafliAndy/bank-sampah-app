@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.example.banksampah.component.ForumList
 import com.example.banksampah.component.MainTopBar
-import com.example.banksampah.model.AuthViewModel
+import com.example.banksampah.viewmodel.AuthViewModel
 
 @Composable
 fun MainForumApp(navController: NavHostController, authViewModel: AuthViewModel) {
