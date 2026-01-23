@@ -353,25 +353,42 @@ fun TopBar(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .weight(1f)
                 .clickable {
-                    navController.popBackStack()
+                    navController.navigate(Routes.MAIN_FORUM)
                 }
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                modifier = Modifier.size(26.dp),
-                tint = Color.White
-            )
+            // Animated Back Icon
+            Surface(
+                color = Color.White.copy(alpha = 0.2f),
+                shape = CircleShape,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "Detail Forum",
-                color = Color.White,
-                fontSize = 19.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 2.dp)
-            )
+
+            Column {
+                Text(
+                    text = "Detail Forum",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Diskusi & Tanya Jawab",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
 
         // Delete Button dengan Elevation
