@@ -12,6 +12,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import com.example.banksampah.component.UserProfileImage
 import com.example.banksampah.component.UserNameWithBadge
@@ -46,6 +49,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.example.banksampah.repository.NotificationRepository
+import com.example.banksampah.viewmodel.GamificationViewModel
 
 @Composable
 fun ForumDetail(
@@ -55,6 +59,7 @@ fun ForumDetail(
 ) {
     val authState = authViewModel.authState.observeAsState()
     val context = LocalContext.current
+    val gamificationViewModel: GamificationViewModel = viewModel()
 
     var post by remember { mutableStateOf<ForumPost?>(null) }
     var replies by remember { mutableStateOf<List<ForumReply>>(emptyList()) }
@@ -187,6 +192,7 @@ fun ForumDetail(
                         )
 
                         newReplyRef.setValue(newReply).addOnSuccessListener {
+                            gamificationViewModel.awardPointsForNewReply()
                             // ===== BUAT NOTIFIKASI =====
                             CoroutineScope(Dispatchers.IO).launch {
                                 val notificationRepo = NotificationRepository()
@@ -261,7 +267,12 @@ fun ForumDetail(
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
-                    post?.let { PostDetail(it) }
+                    post?.let {
+                        PostDetail(
+                            post = it,
+                            viewModel = gamificationViewModel
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -272,12 +283,17 @@ fun ForumDetail(
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
 
-                    RepliesList(
-                        replies = replies,
-                        onReplyClick = { replyId, authorName ->
-                            replyingTo = replyId to authorName
-                        }
-                    )
+                    post?.let { p ->
+                        RepliesList(
+                            replies = replies,
+                            postOwnerId = p.uid,
+                            gamificationViewModel = gamificationViewModel,
+                            onReplyClick = { replyId, authorName ->
+                                replyingTo = replyId to authorName
+                            }
+                        )
+                    }
+
 
                     Spacer(modifier = Modifier.height(80.dp))
                 }
@@ -397,7 +413,9 @@ fun TopBar(
 }
 
 @Composable
-fun PostDetail(post: ForumPost) {
+fun PostDetail(post: ForumPost, viewModel: GamificationViewModel) {
+    val currentUser = FirebaseAuth.getInstance().currentUser
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
@@ -457,31 +475,121 @@ fun PostDetail(post: ForumPost) {
                         .height(250.dp)
                 )
             }
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Upvote/Downvote buttons
+                VotingButtons(
+                    upvotes = post.upvotes,
+                    downvotes = post.downvotes,
+                    onUpvote = {
+                        viewModel.upvotePost(post.id)
+                    },
+                    onDownvote = {
+                        viewModel.downvotePost(post.id)
+                    },
+                    enabled = currentUser?.uid != post.uid // Tidak bisa vote post sendiri
+                )
+
+                // Net score
+                Text(
+                    text = "${post.upvotes - post.downvotes} poin",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colorResource(id = R.color.green)
+                )
+            }
+
         }
     }
 }
 
+
+@Composable
+fun VotingButtons(
+    upvotes: Int,
+    downvotes: Int,
+    onUpvote: () -> Unit,
+    onDownvote: () -> Unit,
+    enabled: Boolean = true
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Upvote button
+        OutlinedButton(
+            onClick = onUpvote,
+            enabled = enabled,
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Color(0xFF4CAF50)
+            ),
+            modifier = Modifier.height(36.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.ArrowUpward,
+                contentDescription = "Upvote",
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(upvotes.toString(), fontSize = 14.sp)
+        }
+
+        // Downvote button
+        OutlinedButton(
+            onClick = onDownvote,
+            enabled = enabled,
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Color(0xFFF44336)
+            ),
+            modifier = Modifier.height(36.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.ArrowDownward,
+                contentDescription = "Downvote",
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(downvotes.toString(), fontSize = 14.sp)
+        }
+    }
+}
 @Composable
 fun RepliesList(
     replies: List<ForumReply>,
-    onReplyClick: (String, String) -> Unit
+    postOwnerId: String,
+    onReplyClick: (String, String) -> Unit,
+    gamificationViewModel: GamificationViewModel
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         RenderReplies(
             replies = replies,
             parentId = null,
             onReplyClick = onReplyClick,
-            level = 0
+            level = 0,
+            postOwnerId = postOwnerId,
+            gamificationViewModel = gamificationViewModel
         )
     }
 }
 
+
 @Composable
 fun ReplyItem(
     reply: ForumReply,
+    postOwnerId: String, // Tambahkan parameter ini
     onReplyClick: (String, String) -> Unit,
-    level: Int
+    level: Int,
+    gamificationViewModel: GamificationViewModel
 ) {
+
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val isPostOwner = currentUser?.uid == postOwnerId
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -510,7 +618,9 @@ fun ReplyItem(
                 .padding(start = 8.dp),
             shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(
-                containerColor = if (level == 0)
+                containerColor = if (reply.isMarkedHelpful)
+                    Color(0xFFE8F5E9) // Hijau muda untuk helpful answer
+                else if (level == 0)
                     colorResource(id = R.color.greenlight)
                 else
                     Color(0xFFE8F5E9)
@@ -555,16 +665,79 @@ fun ReplyItem(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                TextButton(
-                    onClick = { onReplyClick(reply.id, reply.authorName) },
-                    contentPadding = PaddingValues(0.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "Balas",
-                        fontSize = 12.sp,
-                        color = colorResource(id = R.color.green)
+                    // Voting buttons
+                    VotingButtons(
+                        upvotes = reply.upvotes,
+                        downvotes = reply.downvotes,
+                        onUpvote = { gamificationViewModel.upvoteReply(reply.id) },
+                        onDownvote = { gamificationViewModel.downvoteReply(reply.id) },
+                        enabled = currentUser?.uid != reply.uid
                     )
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // "Balas" button
+                        TextButton(
+                            onClick = { onReplyClick(reply.id, reply.authorName) },
+                            contentPadding = PaddingValues(horizontal = 8.dp)
+                        ) {
+                            Text("Balas", fontSize = 12.sp)
+                        }
+
+                        // "Tandai Helpful" button (only for post owner, only on level 0)
+                        if (isPostOwner && level == 0 && !reply.isMarkedHelpful) {
+                            TextButton(
+                                onClick = {
+                                    gamificationViewModel.markReplyAsHelpful(reply.postId, reply.id)
+                                },
+                                contentPadding = PaddingValues(horizontal = 8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Helpful",
+                                    modifier = Modifier.size(14.dp),
+                                    tint = colorResource(id = R.color.green)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("Helpful", fontSize = 12.sp)
+                            }
+                        }
+
+                        // Badge jika sudah marked as helpful
+                        if (reply.isMarkedHelpful) {
+                            Surface(
+                                color = Color(0xFF4CAF50),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = Color.White
+                                    )
+                                    Text(
+                                        "Helpful Answer",
+                                        fontSize = 11.sp,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
+
+
+
             }
         }
     }
@@ -658,23 +831,28 @@ fun RenderReplies(
     replies: List<ForumReply>,
     parentId: String?,
     onReplyClick: (String, String) -> Unit,
-    level: Int
+    level: Int,
+    postOwnerId: String,
+    gamificationViewModel: GamificationViewModel
 ) {
     val children = replies.filter { it.parentReplyId == parentId }
 
     children.forEach { reply ->
         ReplyItem(
             reply = reply,
+            postOwnerId = postOwnerId,
             onReplyClick = onReplyClick,
-            level = level
+            level = level,
+            gamificationViewModel = gamificationViewModel
         )
 
-        // Recursive call untuk nested replies
         RenderReplies(
             replies = replies,
             parentId = reply.id,
             onReplyClick = onReplyClick,
-            level = level + 1
+            level = level + 1,
+            postOwnerId = postOwnerId,
+            gamificationViewModel = gamificationViewModel
         )
     }
 }

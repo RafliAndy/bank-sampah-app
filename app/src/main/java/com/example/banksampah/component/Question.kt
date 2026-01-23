@@ -56,6 +56,7 @@ import com.example.banksampah.Routes
 import com.example.banksampah.data.ForumPost
 import com.example.banksampah.viewmodel.uploadToCloudinary
 import com.example.banksampah.ui.theme.BankSampahTheme
+import com.example.banksampah.viewmodel.GamificationViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import java.util.UUID
@@ -83,7 +84,9 @@ fun MainQuestion(navController: NavHostController){
 }
 
     @Composable
-    fun Question(navController: NavHostController) {
+    fun Question(navController: NavHostController,
+                 gamificationViewModel: GamificationViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    ) {
         var title by remember { mutableStateOf("") }
         var bodytext by remember { mutableStateOf("") }
         var imageUri by remember { mutableStateOf<Uri?>(null) }
@@ -165,7 +168,9 @@ fun MainQuestion(navController: NavHostController){
                                             onError = { err ->
                                                 uploading = false
                                                 Toast.makeText(context, "Gagal kirim: $err", Toast.LENGTH_SHORT).show()
-                                            }
+                                            },
+                                            gamificationViewModel = gamificationViewModel
+
                                         )
                                     }.addOnFailureListener { e ->
                                         uploading = false
@@ -193,7 +198,8 @@ fun MainQuestion(navController: NavHostController){
                                 onError = { err ->
                                     uploading = false
                                     Toast.makeText(context, "Gagal kirim: $err", Toast.LENGTH_SHORT).show()
-                                }
+                                },
+                                gamificationViewModel = gamificationViewModel
                             )
                         }
                         }.addOnFailureListener { e ->
@@ -359,7 +365,8 @@ fun MainQuestion(navController: NavHostController){
         uid: String,
         authorName: String,
         onComplete: () -> Unit,
-        onError: (String) -> Unit
+        onError: (String) -> Unit,
+        gamificationViewModel: GamificationViewModel
     ) {
         val postsRef = FirebaseDatabase.getInstance().getReference("posts")
         // key push otomatis
@@ -375,16 +382,13 @@ fun MainQuestion(navController: NavHostController){
         )
 
         postsRef.child(key).setValue(post)
-            .addOnSuccessListener { onComplete() }
+            .addOnSuccessListener {
+                // ===== AUTO AWARD POINTS =====
+                gamificationViewModel.awardPointsForNewPost()
+
+                onComplete()
+            }
             .addOnFailureListener { e -> onError(e.message ?: "Unknown error") }
+
     }
 
-
-
-@Preview(showBackground = true)
-@Composable
-fun BottomTextPreview() {
-    BankSampahTheme {
-        MainQuestion(navController = rememberNavController())
-    }
-}

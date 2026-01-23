@@ -7,5 +7,9 @@ data class ForumPost(
     var imageUrl: String? = null,
     var uid: String = "",
     var authorName: String = "",
-    var timestamp: Long = 0
+    var timestamp: Long = 0,
+
+    var upvotes: Int = 0,
+    var downvotes: Int = 0,
+    var hasImage: Boolean = false
 )
