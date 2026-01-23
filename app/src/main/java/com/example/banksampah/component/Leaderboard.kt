@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +38,9 @@ import com.google.firebase.auth.FirebaseAuth
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LeaderboardApp(navController: NavHostController) {
+    var selectedTab by remember { mutableStateOf(0) }
+    val tabs = listOf("🏆 All Time", "📅 Bulan Ini")
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -68,19 +72,52 @@ fun LeaderboardApp(navController: NavHostController) {
                 modifier = Modifier.fillMaxSize()
             )
 
-            LeaderboardContent()
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Tab Row
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = colorResource(id = R.color.green),
+                    contentColor = Color.White,
+                    indicator = { tabPositions ->
+                        Box(
+                            Modifier
+                                .tabIndicatorOffset(tabPositions[selectedTab])
+                                .height(4.dp)
+                                .background(Color.White, RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                        )
+                    }
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = {
+                                Text(
+                                    text = title,
+                                    fontSize = 16.sp,
+                                    fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        )
+                    }
+                }
+
+                // Content based on selected tab
+                LeaderboardContent(isMonthly = selectedTab == 1)
+            }
         }
     }
 }
 
+
 @Composable
-fun LeaderboardContent() {
+fun LeaderboardContent(isMonthly: Boolean) {
     val viewModel: GamificationViewModel = viewModel()
     val leaderboardState by viewModel.leaderboard.collectAsState()
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
-    LaunchedEffect(Unit) {
-        viewModel.loadLeaderboard(20) // Load top 20
+    LaunchedEffect(isMonthly) {
+        viewModel.loadLeaderboard(20, isMonthly)
     }
 
     Column(
@@ -101,13 +138,13 @@ fun LeaderboardContent() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "🌟 Top Contributors",
+                    if (isMonthly) "📅 Top Bulan Ini" else "🌟 Top Contributors",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = colorResource(id = R.color.green)
                 )
                 Text(
-                    "Berdasarkan Poin",
+                    if (isMonthly) "Poin yang dikumpulkan bulan ini" else "Berdasarkan Total Poin",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
@@ -123,7 +160,7 @@ fun LeaderboardContent() {
 
             is GamificationViewModel.LeaderboardState.Success -> {
                 if (state.entries.isEmpty()) {
-                    EmptyLeaderboard()
+                    EmptyLeaderboard(isMonthly)
                 } else {
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -132,11 +169,11 @@ fun LeaderboardContent() {
                             EnhancedLeaderboardCard(
                                 entry = entry,
                                 rank = index + 1,
-                                isCurrentUser = entry.uid == currentUserId
+                                isCurrentUser = entry.uid == currentUserId,
+                                isMonthly = isMonthly
                             )
                         }
 
-                        // Spacer at bottom
                         item {
                             Spacer(modifier = Modifier.height(80.dp))
                         }
@@ -147,10 +184,11 @@ fun LeaderboardContent() {
             is GamificationViewModel.LeaderboardState.Error -> {
                 ErrorLeaderboard(
                     message = state.message,
-                    onRetry = { viewModel.loadLeaderboard(20) }
+                    onRetry = { viewModel.loadLeaderboard(20, isMonthly) }
                 )
             }
         }
+
     }
 }
 
@@ -158,7 +196,8 @@ fun LeaderboardContent() {
 fun EnhancedLeaderboardCard(
     entry: LeaderboardEntry,
     rank: Int,
-    isCurrentUser: Boolean
+    isCurrentUser: Boolean,
+    isMonthly: Boolean
 ) {
     val context = LocalContext.current
 
@@ -214,12 +253,15 @@ fun EnhancedLeaderboardCard(
                             1 -> Brush.radialGradient(
                                 colors = listOf(Color(0xFFFFD700), Color(0xFFFFA500))
                             )
+
                             2 -> Brush.radialGradient(
                                 colors = listOf(Color(0xFFC0C0C0), Color(0xFF808080))
                             )
+
                             3 -> Brush.radialGradient(
                                 colors = listOf(Color(0xFFCD7F32), Color(0xFF8B4513))
                             )
+
                             else -> Brush.radialGradient(
                                 colors = listOf(
                                     colorResource(id = R.color.green).copy(alpha = 0.3f),
@@ -296,21 +338,21 @@ fun EnhancedLeaderboardCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Level
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        Text("\uD83D\uDE80", fontSize = 12.sp)
-                        Text(
-                            "Lv ${entry.level}",
-                            fontSize = 12.sp,
-                            color = Color.Gray,
-                            fontWeight = FontWeight.Medium
-                        )
+                    if (!isMonthly) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text("🚀", fontSize = 12.sp)
+                            Text(
+                                "Lv ${entry.level}",
+                                fontSize = 12.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
 
-                    // Badges
                     if (entry.badges.isNotEmpty()) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -327,8 +369,6 @@ fun EnhancedLeaderboardCard(
                     }
                 }
             }
-
-            // Points
             Column(
                 horizontalAlignment = Alignment.End
             ) {
@@ -347,7 +387,6 @@ fun EnhancedLeaderboardCard(
         }
     }
 }
-
 @Composable
 fun LoadingLeaderboard() {
     Box(
@@ -372,7 +411,7 @@ fun LoadingLeaderboard() {
 }
 
 @Composable
-fun EmptyLeaderboard() {
+fun EmptyLeaderboard(isMonthly: Boolean) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -390,7 +429,10 @@ fun EmptyLeaderboard() {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "Leaderboard akan muncul saat ada pengguna yang aktif",
+                if (isMonthly)
+                    "Belum ada aktivitas bulan ini. Ayo mulai berkontribusi!"
+                else
+                    "Leaderboard akan muncul saat ada pengguna yang aktif",
                 fontSize = 14.sp,
                 color = Color.Gray,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center

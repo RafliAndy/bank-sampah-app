@@ -377,11 +377,22 @@ class GamificationRepository {
 
     // ========== LEADERBOARD ==========
 
-    suspend fun getLeaderboard(limit: Int = 10): Result<List<LeaderboardEntry>> =
-        suspendCoroutine { continuation ->
-            database.child("gamification")
+    suspend fun getLeaderboard(
+        limit: Int = 10,
+        isMonthly: Boolean = false
+    ): Result<List<LeaderboardEntry>> = suspendCoroutine { continuation ->
+
+        // Get current month timestamps
+        val calendar = java.util.Calendar.getInstance()
+        calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        val monthStart = calendar.timeInMillis
+
+        database.child("gamification")
                 .orderByChild("totalPoints")
-                .limitToLast(limit)
+                .limitToLast(limit * 3)
                 .addListenerForSingleValueEvent(object : ValueEventListener {
                     override fun onDataChange(snapshot: DataSnapshot) {
                         val entries = mutableListOf<LeaderboardEntry>()
@@ -401,25 +412,66 @@ class GamificationRepository {
                                     val displayName = userSnapshot.child("displayName").getValue(String::class.java) ?: "Unknown"
                                     val photoUrl = userSnapshot.child("profilePhotoUrl").getValue(String::class.java) ?: ""
 
-                                    entries.add(LeaderboardEntry(
-                                        uid = gamification.uid,
-                                        displayName = displayName,
-                                        profilePhotoUrl = photoUrl,
-                                        totalPoints = gamification.totalPoints,
-                                        level = gamification.level,
-                                        badges = gamification.badges,
-                                        rank = index + 1
-                                    ))
+                                    val shouldInclude = if (isMonthly) {
+                                        // Hitung poin bulan ini saja
+                                        getMonthlyPoints(gamification.uid, monthStart) { monthlyPoints ->
+                                            if (monthlyPoints > 0) {
+                                                entries.add(LeaderboardEntry(
+                                                    uid = gamification.uid,
+                                                    displayName = displayName,
+                                                    profilePhotoUrl = photoUrl,
+                                                    totalPoints = monthlyPoints,
+                                                    level = gamification.level,
+                                                    badges = gamification.badges,
+                                                    rank = 0
+                                                ))
+                                            }
 
-                                    processedCount++
-                                    if (processedCount == totalCount) {
-                                        continuation.resume(Result.success(entries.sortedBy { it.rank }))
+                                            processedCount++
+                                            if (processedCount == totalCount) {
+                                                // Sort dan assign rank
+                                                val sorted = entries.sortedByDescending { it.totalPoints }
+                                                    .take(limit)
+                                                    .mapIndexed { index, entry ->
+                                                        entry.copy(rank = index + 1)
+                                                    }
+                                                continuation.resume(Result.success(sorted))
+                                            }
+                                        }
+                                    } else {
+                                        // All time - langsung masukkan
+                                        entries.add(LeaderboardEntry(
+                                            uid = gamification.uid,
+                                            displayName = displayName,
+                                            profilePhotoUrl = photoUrl,
+                                            totalPoints = gamification.totalPoints,
+                                            level = gamification.level,
+                                            badges = gamification.badges,
+                                            rank = 0
+                                        ))
+
+                                        processedCount++
+                                        if (processedCount == totalCount) {
+                                            val sorted = entries.sortedByDescending { it.totalPoints }
+                                                .take(limit)
+                                                .mapIndexed { index, entry ->
+                                                    entry.copy(rank = index + 1)
+                                                }
+                                            continuation.resume(Result.success(sorted))
+                                        }
+                                        true
                                     }
+
                                 }
                                 .addOnFailureListener {
                                     processedCount++
                                     if (processedCount == totalCount) {
-                                        continuation.resume(Result.success(entries.sortedBy { it.rank }))
+                                        val sorted = entries.sortedByDescending { it.totalPoints }
+                                            .take(limit)
+                                            .mapIndexed { index, entry ->
+                                                entry.copy(rank = index + 1)
+                                            }
+                                        continuation.resume(Result.success(sorted))
                                     }
                                 }
                         }
@@ -430,6 +482,30 @@ class GamificationRepository {
                     }
                 })
         }
+
+    // Fungsi helper untuk menghitung poin bulan ini
+    private fun getMonthlyPoints(uid: String, monthStart: Long, callback: (Int) -> Unit) {
+        database.child("point_transactions")
+            .orderByChild("uid")
+            .equalTo(uid)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    var monthlyPoints = 0
+                    for (transactionSnap in snapshot.children) {
+                        val transaction = transactionSnap.getValue(PointTransaction::class.java)
+                        if (transaction != null && transaction.timestamp >= monthStart) {
+                            monthlyPoints += transaction.points
+                        }
+                    }
+                    callback(monthlyPoints)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    callback(0)
+                }
+            })
+    }
+
 
     // ========== DAILY LOGIN STREAK ==========
 

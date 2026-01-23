@@ -162,11 +162,11 @@ class GamificationViewModel : ViewModel() {
 
     // ========== LEADERBOARD ==========
 
-    fun loadLeaderboard(limit: Int = 10) {
+    fun loadLeaderboard(limit: Int = 10, isMonthly: Boolean = false) {
         viewModelScope.launch {
             _leaderboard.value = LeaderboardState.Loading
 
-            val result = repository.getLeaderboard(limit)
+            val result = repository.getLeaderboard(limit, isMonthly)
 
             _leaderboard.value = if (result.isSuccess) {
                 LeaderboardState.Success(result.getOrThrow())
