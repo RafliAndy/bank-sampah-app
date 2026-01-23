@@ -32,24 +32,37 @@ class GamificationRepository {
             if (existingVote != null) {
                 Log.d(TAG, "Found existing vote: ${existingVote.id}, current value: ${existingVote.voteValue}")
 
-                // Update existing vote
                 if (existingVote.voteValue == voteValue) {
-                    // Remove vote (toggle off)
+                    // ===== TOGGLE OFF: Remove vote =====
                     Log.d(TAG, "Removing vote (toggle off)")
                     deleteVote(existingVote.id)
-                    updateVoteCount(targetId, targetType, -voteValue)
+
+                    // ✅ FIX: Pass voteValue asli, bukan change
+                    decrementVoteCount(targetId, targetType, existingVote.voteValue)
                 } else {
-                    // Change vote (from upvote to downvote or vice versa)
-                    Log.d(TAG, "Changing vote direction")
+                    // ===== SWITCH VOTE: Change from upvote to downvote or vice versa =====
+                    Log.d(TAG, "Switching vote from ${existingVote.voteValue} to $voteValue")
+
+                    // Remove old vote count
+                    decrementVoteCount(targetId, targetType, existingVote.voteValue)
+
+                    // Update vote in database
                     existingVote.voteValue = voteValue
                     database.child("votes").child(existingVote.id)
                         .setValue(existingVote).await()
-                    // Update count: remove old vote effect + add new vote effect
-                    updateVoteCount(targetId, targetType, voteValue * 2)
+
+                    // Add new vote count
+                    incrementVoteCount(targetId, targetType, voteValue)
+
+                    // Award points for new vote (if upvote)
+                    if (voteValue > 0) {
+                        awardPointsForVote(targetId, targetType)
+                    }
                 }
             } else {
+                // ===== CREATE NEW VOTE =====
                 Log.d(TAG, "Creating new vote")
-                // Create new vote
+
                 val vote = Vote(
                     targetId = targetId,
                     targetType = targetType,
@@ -59,14 +72,16 @@ class GamificationRepository {
                 val newRef = database.child("votes").push()
                 vote.id = newRef.key ?: ""
 
-                // Set value with error handling
                 newRef.setValue(vote).await()
                 Log.d(TAG, "Vote created successfully with ID: ${vote.id}")
 
-                updateVoteCount(targetId, targetType, voteValue)
+                // Increment vote count
+                incrementVoteCount(targetId, targetType, voteValue)
 
-                // Award points to post/reply author
-                awardPointsForVote(targetId, targetType, voteValue)
+                // Award points (if upvote)
+                if (voteValue > 0) {
+                    awardPointsForVote(targetId, targetType)
+                }
             }
 
             Log.d(TAG, "Vote operation completed successfully")
@@ -74,7 +89,6 @@ class GamificationRepository {
         } catch (e: Exception) {
             Log.e(TAG, "Error voting: ${e.message}", e)
 
-            // Provide more specific error messages
             val userFriendlyMessage = when {
                 e.message?.contains("Permission denied") == true ->
                     "Izin ditolak. Pastikan Anda sudah login dan Firebase Rules sudah benar."
@@ -85,6 +99,50 @@ class GamificationRepository {
             }
 
             Result.failure(Exception(userFriendlyMessage))
+        }
+    }
+
+    suspend fun getUserVoteOnTarget(voterId: String, targetId: String, targetType: VoteType): Vote? {
+        return getExistingVote(voterId, targetId, targetType)
+    }
+
+    private suspend fun incrementVoteCount(targetId: String, targetType: VoteType, voteValue: Int) {
+        try {
+            val path = if (targetType == VoteType.POST) "posts" else "replies"
+            // ✅ FIX: Gunakan voteValue untuk tentukan field
+            val field = if (voteValue > 0) "upvotes" else "downvotes"
+
+            Log.d(TAG, "Incrementing: path=$path, targetId=$targetId, field=$field")
+
+            val ref = database.child(path).child(targetId).child(field)
+            val current = ref.get().await().getValue(Int::class.java) ?: 0
+            val newValue = current + 1
+
+            ref.setValue(newValue).await()
+            Log.d(TAG, "Count incremented: $current -> $newValue")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error incrementing vote count: ${e.message}", e)
+            throw e
+        }
+    }
+
+    private suspend fun decrementVoteCount(targetId: String, targetType: VoteType, voteValue: Int) {
+        try {
+            val path = if (targetType == VoteType.POST) "posts" else "replies"
+            // ✅ FIX: Gunakan voteValue untuk tentukan field
+            val field = if (voteValue > 0) "upvotes" else "downvotes"
+
+            Log.d(TAG, "Decrementing: path=$path, targetId=$targetId, field=$field")
+
+            val ref = database.child(path).child(targetId).child(field)
+            val current = ref.get().await().getValue(Int::class.java) ?: 0
+            val newValue = maxOf(0, current - 1) // Prevent negative
+
+            ref.setValue(newValue).await()
+            Log.d(TAG, "Count decremented: $current -> $newValue")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error decrementing vote count: ${e.message}", e)
+            throw e
         }
     }
 
@@ -128,32 +186,8 @@ class GamificationRepository {
         }
     }
 
-    private suspend fun updateVoteCount(targetId: String, targetType: VoteType, change: Int) {
+    private suspend fun awardPointsForVote(targetId: String, targetType: VoteType) {
         try {
-            val path = if (targetType == VoteType.POST) "posts" else "replies"
-            val field = if (change > 0) "upvotes" else "downvotes"
-
-            Log.d(TAG, "Updating vote count: path=$path, targetId=$targetId, field=$field, change=$change")
-
-            val ref = database.child(path).child(targetId).child(field)
-            val current = ref.get().await().getValue(Int::class.java) ?: 0
-            val newValue = maxOf(0, current + kotlin.math.abs(change)) // Prevent negative values
-
-            ref.setValue(newValue).await()
-            Log.d(TAG, "Vote count updated: $current -> $newValue")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error updating vote count: ${e.message}", e)
-            throw e
-        }
-    }
-
-    private suspend fun awardPointsForVote(targetId: String, targetType: VoteType, voteValue: Int) {
-        try {
-            if (voteValue < 0) {
-                Log.d(TAG, "Skipping points award for downvote")
-                return // No points for downvotes
-            }
-
             val path = if (targetType == VoteType.POST) "posts" else "replies"
             val authorSnapshot = database.child(path).child(targetId).child("uid").get().await()
             val authorUid = authorSnapshot.getValue(String::class.java)
@@ -174,6 +208,7 @@ class GamificationRepository {
             // Don't throw - points are bonus, vote should still succeed
         }
     }
+
 
     // ========== USER GAMIFICATION ==========
 

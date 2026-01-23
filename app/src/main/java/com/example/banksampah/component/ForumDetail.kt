@@ -1,6 +1,7 @@
 package com.example.banksampah
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,6 +39,7 @@ import com.example.banksampah.component.MainTopBar
 import com.example.banksampah.component.formatTimeAgo
 import com.example.banksampah.data.ForumPost
 import com.example.banksampah.data.ForumReply
+import com.example.banksampah.data.VoteType
 import com.example.banksampah.viewmodel.AuthViewModel
 import com.example.banksampah.viewmodel.ForumViewModel
 import com.google.firebase.auth.FirebaseAuth
@@ -484,6 +486,8 @@ fun PostDetail(post: ForumPost, viewModel: GamificationViewModel) {
             ) {
                 // Upvote/Downvote buttons
                 VotingButtons(
+                    targetId = post.id,
+                    targetType = VoteType.POST,
                     upvotes = post.upvotes,
                     downvotes = post.downvotes,
                     onUpvote = {
@@ -492,7 +496,7 @@ fun PostDetail(post: ForumPost, viewModel: GamificationViewModel) {
                     onDownvote = {
                         viewModel.downvotePost(post.id)
                     },
-                    enabled = currentUser?.uid != post.uid // Tidak bisa vote post sendiri
+                    enabled = currentUser?.uid != post.uid
                 )
 
                 // Net score
@@ -502,6 +506,7 @@ fun PostDetail(post: ForumPost, viewModel: GamificationViewModel) {
                     fontWeight = FontWeight.Bold,
                     color = colorResource(id = R.color.green)
                 )
+
             }
 
         }
@@ -511,51 +516,101 @@ fun PostDetail(post: ForumPost, viewModel: GamificationViewModel) {
 
 @Composable
 fun VotingButtons(
+    targetId: String,
+    targetType: VoteType,
     upvotes: Int,
     downvotes: Int,
     onUpvote: () -> Unit,
     onDownvote: () -> Unit,
     enabled: Boolean = true
 ) {
+    val viewModel: GamificationViewModel = viewModel()
+    val isVoting by viewModel.isVoting.collectAsState()
+    val voteStates by viewModel.voteStates.collectAsState()
+
+    LaunchedEffect(targetId) {
+        viewModel.getUserVote(targetId, targetType)
+    }
+    val userVote = voteStates[targetId] ?: 0
+
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Upvote button
-        OutlinedButton(
+        Button(
             onClick = onUpvote,
-            enabled = enabled,
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = Color(0xFF4CAF50)
+            enabled = enabled && !isVoting,
+            colors = ButtonDefaults.buttonColors(
+                // ✅ Filled green jika user sudah upvote
+                containerColor = if (userVote == 1) Color(0xFF4CAF50) else Color.Transparent,
+                contentColor = if (userVote == 1) Color.White else Color(0xFF4CAF50),
+                disabledContainerColor = Color.LightGray.copy(alpha = 0.3f),
+                disabledContentColor = Color.Gray
             ),
-            modifier = Modifier.height(36.dp)
+            modifier = Modifier.height(36.dp),
+            border = if (userVote != 1) BorderStroke(1.dp, Color(0xFF4CAF50)) else null,
+            shape = RoundedCornerShape(18.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.ArrowUpward,
-                contentDescription = "Upvote",
-                modifier = Modifier.size(16.dp)
-            )
+            if (isVoting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = if (userVote == 1) Color.White else Color(0xFF4CAF50)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.ArrowUpward,
+                    contentDescription = "Upvote",
+                    modifier = Modifier.size(16.dp)
+                )
+            }
             Spacer(Modifier.width(4.dp))
-            Text(upvotes.toString(), fontSize = 14.sp)
+            Text(
+                upvotes.toString(),
+                fontSize = 14.sp,
+                fontWeight = if (userVote == 1) FontWeight.Bold else FontWeight.Normal
+            )
         }
 
         // Downvote button
-        OutlinedButton(
+        Button(
             onClick = onDownvote,
-            enabled = enabled,
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = Color(0xFFF44336)
+            enabled = enabled && !isVoting,
+            colors = ButtonDefaults.buttonColors(
+                // ✅ Filled red jika user sudah downvote
+                containerColor = if (userVote == -1) Color(0xFFF44336) else Color.Transparent,
+                contentColor = if (userVote == -1) Color.White else Color(0xFFF44336),
+                disabledContainerColor = Color.LightGray.copy(alpha = 0.3f),
+                disabledContentColor = Color.Gray
             ),
-            modifier = Modifier.height(36.dp)
+            modifier = Modifier.height(36.dp),
+            border = if (userVote != -1) BorderStroke(1.dp, Color(0xFFF44336)) else null,
+            shape = RoundedCornerShape(18.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.ArrowDownward,
-                contentDescription = "Downvote",
-                modifier = Modifier.size(16.dp)
-            )
+            if (isVoting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = if (userVote == -1) Color.White else Color(0xFFF44336)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.ArrowDownward,
+                    contentDescription = "Downvote",
+                    modifier = Modifier.size(16.dp)
+                )
+            }
             Spacer(Modifier.width(4.dp))
-            Text(downvotes.toString(), fontSize = 14.sp)
+            Text(
+                downvotes.toString(),
+                fontSize = 14.sp,
+                fontWeight = if (userVote == -1) FontWeight.Bold else FontWeight.Normal
+            )
         }
+
     }
 }
 @Composable
@@ -581,7 +636,7 @@ fun RepliesList(
 @Composable
 fun ReplyItem(
     reply: ForumReply,
-    postOwnerId: String, // Tambahkan parameter ini
+    postOwnerId: String,
     onReplyClick: (String, String) -> Unit,
     level: Int,
     gamificationViewModel: GamificationViewModel
@@ -672,6 +727,8 @@ fun ReplyItem(
                 ) {
                     // Voting buttons
                     VotingButtons(
+                        targetId = reply.id,
+                        targetType = VoteType.REPLY,
                         upvotes = reply.upvotes,
                         downvotes = reply.downvotes,
                         onUpvote = { gamificationViewModel.upvoteReply(reply.id) },
