@@ -14,6 +14,167 @@ class GamificationRepository {
     private val database = FirebaseDatabase.getInstance().reference
     private val TAG = "GamificationRepo"
 
+    // ========== VOTING SYSTEM (ENHANCED) ==========
+
+    suspend fun vote(targetId: String, targetType: VoteType, voteValue: Int): Result<Unit> {
+        return try {
+            val uid = auth.currentUser?.uid
+            if (uid == null) {
+                Log.e(TAG, "User not authenticated")
+                return Result.failure(Exception("Anda harus login terlebih dahulu"))
+            }
+
+            Log.d(TAG, "Attempting vote: targetId=$targetId, type=$targetType, value=$voteValue, userId=$uid")
+
+            // Check if already voted
+            val existingVote = getExistingVote(uid, targetId, targetType)
+
+            if (existingVote != null) {
+                Log.d(TAG, "Found existing vote: ${existingVote.id}, current value: ${existingVote.voteValue}")
+
+                // Update existing vote
+                if (existingVote.voteValue == voteValue) {
+                    // Remove vote (toggle off)
+                    Log.d(TAG, "Removing vote (toggle off)")
+                    deleteVote(existingVote.id)
+                    updateVoteCount(targetId, targetType, -voteValue)
+                } else {
+                    // Change vote (from upvote to downvote or vice versa)
+                    Log.d(TAG, "Changing vote direction")
+                    existingVote.voteValue = voteValue
+                    database.child("votes").child(existingVote.id)
+                        .setValue(existingVote).await()
+                    // Update count: remove old vote effect + add new vote effect
+                    updateVoteCount(targetId, targetType, voteValue * 2)
+                }
+            } else {
+                Log.d(TAG, "Creating new vote")
+                // Create new vote
+                val vote = Vote(
+                    targetId = targetId,
+                    targetType = targetType,
+                    voterId = uid,
+                    voteValue = voteValue
+                )
+                val newRef = database.child("votes").push()
+                vote.id = newRef.key ?: ""
+
+                // Set value with error handling
+                newRef.setValue(vote).await()
+                Log.d(TAG, "Vote created successfully with ID: ${vote.id}")
+
+                updateVoteCount(targetId, targetType, voteValue)
+
+                // Award points to post/reply author
+                awardPointsForVote(targetId, targetType, voteValue)
+            }
+
+            Log.d(TAG, "Vote operation completed successfully")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error voting: ${e.message}", e)
+
+            // Provide more specific error messages
+            val userFriendlyMessage = when {
+                e.message?.contains("Permission denied") == true ->
+                    "Izin ditolak. Pastikan Anda sudah login dan Firebase Rules sudah benar."
+                e.message?.contains("network") == true ->
+                    "Koneksi internet bermasalah. Coba lagi."
+                else ->
+                    "Gagal memberi vote: ${e.message}"
+            }
+
+            Result.failure(Exception(userFriendlyMessage))
+        }
+    }
+
+    private suspend fun getExistingVote(voterId: String, targetId: String, targetType: VoteType): Vote? {
+        return try {
+            Log.d(TAG, "Checking existing vote for voterId=$voterId, targetId=$targetId")
+
+            val snapshot = database.child("votes")
+                .orderByChild("voterId")
+                .equalTo(voterId)
+                .get().await()
+
+            for (voteSnap in snapshot.children) {
+                val vote = voteSnap.getValue(Vote::class.java)
+                if (vote != null && vote.id.isEmpty()) {
+                    vote.id = voteSnap.key ?: ""
+                }
+
+                if (vote?.targetId == targetId && vote.targetType == targetType) {
+                    Log.d(TAG, "Found existing vote: ${vote.id}")
+                    return vote
+                }
+            }
+
+            Log.d(TAG, "No existing vote found")
+            null
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking existing vote: ${e.message}", e)
+            null
+        }
+    }
+
+    private suspend fun deleteVote(voteId: String) {
+        try {
+            Log.d(TAG, "Deleting vote: $voteId")
+            database.child("votes").child(voteId).removeValue().await()
+            Log.d(TAG, "Vote deleted successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting vote: ${e.message}", e)
+            throw e
+        }
+    }
+
+    private suspend fun updateVoteCount(targetId: String, targetType: VoteType, change: Int) {
+        try {
+            val path = if (targetType == VoteType.POST) "posts" else "replies"
+            val field = if (change > 0) "upvotes" else "downvotes"
+
+            Log.d(TAG, "Updating vote count: path=$path, targetId=$targetId, field=$field, change=$change")
+
+            val ref = database.child(path).child(targetId).child(field)
+            val current = ref.get().await().getValue(Int::class.java) ?: 0
+            val newValue = maxOf(0, current + kotlin.math.abs(change)) // Prevent negative values
+
+            ref.setValue(newValue).await()
+            Log.d(TAG, "Vote count updated: $current -> $newValue")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating vote count: ${e.message}", e)
+            throw e
+        }
+    }
+
+    private suspend fun awardPointsForVote(targetId: String, targetType: VoteType, voteValue: Int) {
+        try {
+            if (voteValue < 0) {
+                Log.d(TAG, "Skipping points award for downvote")
+                return // No points for downvotes
+            }
+
+            val path = if (targetType == VoteType.POST) "posts" else "replies"
+            val authorSnapshot = database.child(path).child(targetId).child("uid").get().await()
+            val authorUid = authorSnapshot.getValue(String::class.java)
+
+            if (authorUid == null) {
+                Log.w(TAG, "Author UID not found for target: $targetId")
+                return
+            }
+
+            val points = if (targetType == VoteType.POST) 3 else 2
+            val reason = if (targetType == VoteType.POST)
+                PointReasons.POST_UPVOTED else PointReasons.REPLY_UPVOTED
+
+            Log.d(TAG, "Awarding $points points to $authorUid for $reason")
+            addPoints(authorUid, points, reason)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error awarding points for vote: ${e.message}", e)
+            // Don't throw - points are bonus, vote should still succeed
+        }
+    }
+
     // ========== USER GAMIFICATION ==========
 
     suspend fun getUserGamification(uid: String): Result<UserGamification> =
@@ -71,103 +232,19 @@ class GamificationRepository {
     }
 
     private suspend fun logPointTransaction(uid: String, points: Int, reason: String) {
-        val transaction = PointTransaction(
-            uid = uid,
-            points = points,
-            reason = reason
-        )
-        val newRef = database.child("point_transactions").push()
-        transaction.id = newRef.key ?: ""
-        newRef.setValue(transaction).await()
-    }
-
-    // ========== VOTING SYSTEM ==========
-
-    suspend fun vote(targetId: String, targetType: VoteType, voteValue: Int): Result<Unit> {
-        return try {
-            val uid = auth.currentUser?.uid ?: throw Exception("Not logged in")
-
-            // Check if already voted
-            val existingVote = getExistingVote(uid, targetId, targetType)
-
-            if (existingVote != null) {
-                // Update existing vote
-                if (existingVote.voteValue == voteValue) {
-                    // Remove vote (toggle off)
-                    deleteVote(existingVote.id)
-                    updateVoteCount(targetId, targetType, -voteValue)
-                } else {
-                    // Change vote
-                    existingVote.voteValue = voteValue
-                    database.child("votes").child(existingVote.id)
-                        .setValue(existingVote).await()
-                    updateVoteCount(targetId, targetType, voteValue * 2)
-                }
-            } else {
-                // Create new vote
-                val vote = Vote(
-                    targetId = targetId,
-                    targetType = targetType,
-                    voterId = uid,
-                    voteValue = voteValue
-                )
-                val newRef = database.child("votes").push()
-                vote.id = newRef.key ?: ""
-                newRef.setValue(vote).await()
-
-                updateVoteCount(targetId, targetType, voteValue)
-
-                // Award points to post/reply author
-                awardPointsForVote(targetId, targetType, voteValue)
-            }
-
-            Result.success(Unit)
+        try {
+            val transaction = PointTransaction(
+                uid = uid,
+                points = points,
+                reason = reason
+            )
+            val newRef = database.child("point_transactions").push()
+            transaction.id = newRef.key ?: ""
+            newRef.setValue(transaction).await()
         } catch (e: Exception) {
-            Log.e(TAG, "Error voting", e)
-            Result.failure(e)
+            Log.e(TAG, "Error logging point transaction: ${e.message}", e)
+            // Don't throw - transaction log is optional
         }
-    }
-
-    private suspend fun getExistingVote(voterId: String, targetId: String, targetType: VoteType): Vote? {
-        val snapshot = database.child("votes")
-            .orderByChild("voterId")
-            .equalTo(voterId)
-            .get().await()
-
-        for (voteSnap in snapshot.children) {
-            val vote = voteSnap.getValue(Vote::class.java)
-            if (vote?.targetId == targetId && vote.targetType == targetType) {
-                return vote
-            }
-        }
-        return null
-    }
-
-    private suspend fun deleteVote(voteId: String) {
-        database.child("votes").child(voteId).removeValue().await()
-    }
-
-    private suspend fun updateVoteCount(targetId: String, targetType: VoteType, change: Int) {
-        val path = if (targetType == VoteType.POST) "posts" else "replies"
-        val field = if (change > 0) "upvotes" else "downvotes"
-
-        val ref = database.child(path).child(targetId).child(field)
-        val current = ref.get().await().getValue(Int::class.java) ?: 0
-        ref.setValue(current + kotlin.math.abs(change))
-    }
-
-    private suspend fun awardPointsForVote(targetId: String, targetType: VoteType, voteValue: Int) {
-        if (voteValue < 0) return // No points for downvotes
-
-        val path = if (targetType == VoteType.POST) "posts" else "replies"
-        val authorSnapshot = database.child(path).child(targetId).child("uid").get().await()
-        val authorUid = authorSnapshot.getValue(String::class.java) ?: return
-
-        val points = if (targetType == VoteType.POST) 3 else 2
-        val reason = if (targetType == VoteType.POST)
-            PointReasons.POST_UPVOTED else PointReasons.REPLY_UPVOTED
-
-        addPoints(authorUid, points, reason)
     }
 
     // ========== HELPFUL ANSWER SYSTEM ==========
@@ -210,47 +287,56 @@ class GamificationRepository {
     // ========== BADGE SYSTEM ==========
 
     private suspend fun checkAndAwardBadges(uid: String) {
-        val gamification = getUserGamification(uid).getOrThrow()
-        val currentBadges = gamification.badges.toMutableList()
-        var newBadges = false
+        try {
+            val gamification = getUserGamification(uid).getOrThrow()
+            val currentBadges = gamification.badges.toMutableList()
+            var newBadges = false
 
-        for (badge in BadgeDefinitions.ALL_BADGES) {
-            if (currentBadges.contains(badge.id)) continue
+            for (badge in BadgeDefinitions.ALL_BADGES) {
+                if (currentBadges.contains(badge.id)) continue
 
-            val earned = when (val req = badge.requirement) {
-                is BadgeRequirement.FirstPost -> gamification.postCount >= req.required
-                is BadgeRequirement.TotalReplies -> gamification.replyCount >= req.required
-                is BadgeRequirement.TotalPoints -> gamification.totalPoints >= req.required
-                is BadgeRequirement.HelpfulAnswers -> gamification.helpfulAnswerCount >= req.required
-                is BadgeRequirement.LoginStreak -> gamification.longestStreak >= req.required
-                is BadgeRequirement.PostsWithImage -> {
-                    // Count posts with images
-                    val postsWithImage = countPostsWithImage(uid)
-                    postsWithImage >= req.required
+                val earned = when (val req = badge.requirement) {
+                    is BadgeRequirement.FirstPost -> gamification.postCount >= req.required
+                    is BadgeRequirement.TotalReplies -> gamification.replyCount >= req.required
+                    is BadgeRequirement.TotalPoints -> gamification.totalPoints >= req.required
+                    is BadgeRequirement.HelpfulAnswers -> gamification.helpfulAnswerCount >= req.required
+                    is BadgeRequirement.LoginStreak -> gamification.longestStreak >= req.required
+                    is BadgeRequirement.PostsWithImage -> {
+                        val postsWithImage = countPostsWithImage(uid)
+                        postsWithImage >= req.required
+                    }
+                }
+
+                if (earned) {
+                    currentBadges.add(badge.id)
+                    newBadges = true
+                    Log.d(TAG, "Badge earned: ${badge.name}")
                 }
             }
 
-            if (earned) {
-                currentBadges.add(badge.id)
-                newBadges = true
-                Log.d(TAG, "Badge earned: ${badge.name}")
+            if (newBadges) {
+                updateUserGamification(gamification.copy(badges = currentBadges))
             }
-        }
-
-        if (newBadges) {
-            updateUserGamification(gamification.copy(badges = currentBadges))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking badges: ${e.message}", e)
+            // Don't throw - badge checking is optional
         }
     }
 
     private suspend fun countPostsWithImage(uid: String): Int {
-        val snapshot = database.child("posts")
-            .orderByChild("uid")
-            .equalTo(uid)
-            .get().await()
+        return try {
+            val snapshot = database.child("posts")
+                .orderByChild("uid")
+                .equalTo(uid)
+                .get().await()
 
-        return snapshot.children.count {
-            val imageUrl = it.child("imageUrl").getValue(String::class.java)
-            !imageUrl.isNullOrEmpty()
+            snapshot.children.count {
+                val imageUrl = it.child("imageUrl").getValue(String::class.java)
+                !imageUrl.isNullOrEmpty()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error counting posts with image: ${e.message}", e)
+            0
         }
     }
 
@@ -264,11 +350,17 @@ class GamificationRepository {
                 .addListenerForSingleValueEvent(object : ValueEventListener {
                     override fun onDataChange(snapshot: DataSnapshot) {
                         val entries = mutableListOf<LeaderboardEntry>()
+                        val totalCount = snapshot.childrenCount.toInt()
+                        var processedCount = 0
+
+                        if (totalCount == 0) {
+                            continuation.resume(Result.success(emptyList()))
+                            return
+                        }
 
                         for ((index, child) in snapshot.children.reversed().withIndex()) {
                             val gamification = child.getValue(UserGamification::class.java) ?: continue
 
-                            // Get user display name
                             database.child("users").child(gamification.uid).get()
                                 .addOnSuccessListener { userSnapshot ->
                                     val displayName = userSnapshot.child("displayName").getValue(String::class.java) ?: "Unknown"
@@ -284,14 +376,17 @@ class GamificationRepository {
                                         rank = index + 1
                                     ))
 
-                                    if (entries.size == snapshot.childrenCount.toInt()) {
+                                    processedCount++
+                                    if (processedCount == totalCount) {
                                         continuation.resume(Result.success(entries.sortedBy { it.rank }))
                                     }
                                 }
-                        }
-
-                        if (snapshot.childrenCount == 0L) {
-                            continuation.resume(Result.success(emptyList()))
+                                .addOnFailureListener {
+                                    processedCount++
+                                    if (processedCount == totalCount) {
+                                        continuation.resume(Result.success(entries.sortedBy { it.rank }))
+                                    }
+                                }
                         }
                     }
 
@@ -306,14 +401,14 @@ class GamificationRepository {
     suspend fun updateLoginStreak(uid: String): Result<Unit> {
         return try {
             val gamification = getUserGamification(uid).getOrThrow()
-            val today = System.currentTimeMillis() / (24 * 60 * 60 * 1000) // Days since epoch
+            val today = System.currentTimeMillis() / (24 * 60 * 60 * 1000)
             val lastLogin = gamification.lastLoginDate / (24 * 60 * 60 * 1000)
 
             val newStreak = when {
-                lastLogin == 0L -> 1 // First login
-                today - lastLogin == 1L -> gamification.currentStreak + 1 // Consecutive day
-                today == lastLogin -> gamification.currentStreak // Same day
-                else -> 1 // Streak broken
+                lastLogin == 0L -> 1
+                today - lastLogin == 1L -> gamification.currentStreak + 1
+                today == lastLogin -> gamification.currentStreak
+                else -> 1
             }
 
             val updated = gamification.copy(
@@ -324,7 +419,6 @@ class GamificationRepository {
 
             updateUserGamification(updated)
 
-            // Award streak bonus points
             if (newStreak > 1) {
                 addPoints(uid, newStreak, PointReasons.STREAK_BONUS)
             } else {

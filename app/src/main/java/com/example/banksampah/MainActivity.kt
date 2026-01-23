@@ -32,6 +32,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -43,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.colorResource
@@ -64,6 +66,8 @@ import com.example.banksampah.ui.theme.BankSampahTheme
 import com.example.banksampah.viewmodel.NewsViewModel
 // ===== TAMBAHKAN IMPORT INI =====
 import com.example.banksampah.component.MainEdukasiSection
+import com.example.banksampah.data.Badge
+import com.example.banksampah.viewmodel.GamificationViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -320,6 +324,151 @@ fun ErrorNewsCard(
                     textAlign = TextAlign.Center
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun UserGamificationStats(uid: String) {
+    val viewModel: GamificationViewModel = viewModel()
+    val gamificationState by viewModel.userGamification.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadUserGamification()
+    }
+
+    when (val state = gamificationState) {
+        is GamificationViewModel.GamificationState.Success -> {
+            val data = state.data
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White.copy(alpha = 0.95f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Level & Points
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("Level ${data.level}",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colorResource(id = R.color.green)
+                            )
+                            Text("${data.totalPoints} poin",
+                                fontSize = 14.sp,
+                                color = Color.Gray
+                            )
+                        }
+
+                        // Streak badge
+                        if (data.currentStreak > 0) {
+                            Surface(
+                                color = Color(0xFFFF9800),
+                                shape = RoundedCornerShape(20.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text("🔥", fontSize = 16.sp)
+                                    Text("${data.currentStreak} hari",
+                                        fontSize = 12.sp,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Progress bar ke level berikutnya
+                    val progress = viewModel.getLevelProgress()
+                    val pointsToNext = viewModel.getPointsToNextLevel()
+
+                    Column {
+                        LinearProgressIndicator(
+                            progress = progress,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = colorResource(id = R.color.green)
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "$pointsToNext poin lagi ke Level ${data.level + 1}",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Stats grid
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        StatItem("Post", data.postCount.toString())
+                        StatItem("Reply", data.replyCount.toString())
+                        StatItem("Helpful", data.helpfulAnswerCount.toString())
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Badges
+                    if (data.badges.isNotEmpty()) {
+                        Text("Badge", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Spacer(Modifier.height(8.dp))
+
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(viewModel.getEarnedBadges()) { badge ->
+                                BadgeItem(badge)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        is GamificationViewModel.GamificationState.Loading -> {
+            // Loading indicator
+        }
+        is GamificationViewModel.GamificationState.Error -> {
+            // Error message
+        }
+    }
+}
+
+@Composable
+fun StatItem(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text(label, fontSize = 12.sp, color = Color.Gray)
+    }
+}
+
+@Composable
+fun BadgeItem(badge: Badge) {
+    Surface(
+        color = Color(0xFFFFF3E0),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(badge.icon, fontSize = 32.sp)
+            Text(badge.name, fontSize = 10.sp, textAlign = TextAlign.Center)
         }
     }
 }
