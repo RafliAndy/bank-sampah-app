@@ -5,35 +5,19 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +29,7 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -55,6 +40,9 @@ import com.example.banksampah.component.BottomBar
 import com.example.banksampah.component.UserForumListSection
 import com.example.banksampah.viewmodel.AuthViewModel
 import com.example.banksampah.viewmodel.ProfileViewModel
+import com.example.banksampah.viewmodel.GamificationViewModel
+import com.example.banksampah.data.Badge
+import com.example.banksampah.data.BadgeDefinitions
 
 @Composable
 fun MainProfileApp(navController: NavHostController, authViewModel: AuthViewModel) {
@@ -100,8 +88,14 @@ fun MainProfileApp(navController: NavHostController, authViewModel: AuthViewMode
 @Composable
 fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) {
     val profileViewModel: ProfileViewModel = viewModel()
+    val gamificationViewModel: GamificationViewModel = viewModel()
     val profileState by profileViewModel.profileState.collectAsState()
+    val gamificationState by gamificationViewModel.userGamification.collectAsState()
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        gamificationViewModel.loadUserGamification()
+    }
 
     Column {
         // Profile Header Section
@@ -229,7 +223,6 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
                                 )
                                 Text(
                                     text = user.displayName.ifEmpty { user.fullName },
-                                    style = MaterialTheme.typography.headlineSmall,
                                     fontWeight = FontWeight.Medium,
                                     color = Color.White,
                                     modifier = Modifier.width(200.dp),
@@ -288,7 +281,278 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
             }
         }
 
+        // ===== GAMIFICATION STATS SECTION =====
+        when (val state = gamificationState) {
+            is GamificationViewModel.GamificationState.Success -> {
+                UserGamificationStatsSection(
+                    data = state.data,
+                    viewModel = gamificationViewModel
+                )
+            }
+            is GamificationViewModel.GamificationState.Loading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = colorResource(id = R.color.green))
+                }
+            }
+            is GamificationViewModel.GamificationState.Error -> {
+                // Optional: Show error or just hide
+            }
+        }
+
         // User Forum Posts Section
         UserForumListSection(navController = navController)
+    }
+}
+
+@Composable
+fun UserGamificationStatsSection(
+    data: com.example.banksampah.data.UserGamification,
+    viewModel: GamificationViewModel
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.95f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            // Header with Level & Points
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Level ${data.level}",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colorResource(id = R.color.green)
+                    )
+                    Text(
+                        text = "${data.totalPoints} poin",
+                        fontSize = 16.sp,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // Streak badge
+                if (data.currentStreak > 0) {
+                    Surface(
+                        color = Color(0xFFFF9800),
+                        shape = RoundedCornerShape(24.dp),
+                        shadowElevation = 2.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text("🔥", fontSize = 20.sp)
+                            Text(
+                                "${data.currentStreak} hari",
+                                fontSize = 14.sp,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Progress bar ke level berikutnya
+            val progress = viewModel.getLevelProgress()
+            val pointsToNext = viewModel.getPointsToNextLevel()
+
+            Column {
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(5.dp)),
+                    color = colorResource(id = R.color.green),
+                    trackColor = Color(0xFFE0E0E0)
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "$pointsToNext poin lagi ke Level ${data.level + 1}",
+                    fontSize = 13.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // Stats grid
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                StatItem(
+                    label = "Post",
+                    value = data.postCount.toString(),
+                    icon = "📝"
+                )
+                StatItem(
+                    label = "Reply",
+                    value = data.replyCount.toString(),
+                    icon = "💬"
+                )
+                StatItem(
+                    label = "Helpful",
+                    value = data.helpfulAnswerCount.toString(),
+                    icon = "⭐"
+                )
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // Badges Section
+            val earnedBadges = viewModel.getEarnedBadges()
+            if (earnedBadges.isNotEmpty()) {
+                Text(
+                    "Badge yang Diraih",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = Color.Black
+                )
+                Spacer(Modifier.height(12.dp))
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(earnedBadges) { badge ->
+                        BadgeItem(badge)
+                    }
+                }
+            } else {
+                // Show locked badges preview
+                Text(
+                    "Badge Tersedia",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = Color.Black
+                )
+                Spacer(Modifier.height(12.dp))
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(BadgeDefinitions.ALL_BADGES.take(3)) { badge ->
+                        LockedBadgeItem(badge)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun StatItem(label: String, value: String, icon: String) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = colorResource(id = R.color.greenlight)
+        ),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.width(100.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Text(icon, fontSize = 24.sp)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                value,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = colorResource(id = R.color.green)
+            )
+            Text(
+                label,
+                fontSize = 12.sp,
+                color = Color.Gray,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+fun BadgeItem(badge: Badge) {
+    Surface(
+        color = Color(0xFFFFF3E0),
+        shape = RoundedCornerShape(16.dp),
+        shadowElevation = 2.dp,
+        modifier = Modifier.width(120.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(badge.icon, fontSize = 40.sp)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                badge.name,
+                fontSize = 11.sp,
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF424242)
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                badge.description,
+                fontSize = 9.sp,
+                textAlign = TextAlign.Center,
+                color = Color.Gray,
+                lineHeight = 12.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun LockedBadgeItem(badge: Badge) {
+    Surface(
+        color = Color(0xFFEEEEEE),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.width(120.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("🔒", fontSize = 40.sp)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                badge.name,
+                fontSize = 11.sp,
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Bold,
+                color = Color.Gray
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                badge.description,
+                fontSize = 9.sp,
+                textAlign = TextAlign.Center,
+                color = Color.LightGray,
+                lineHeight = 12.sp
+            )
+        }
     }
 }
