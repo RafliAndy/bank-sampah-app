@@ -119,7 +119,7 @@ fun Back(navController: NavHostController) {
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
                 modifier = Modifier.size(30.dp),
-                tint = Color.Black
+                tint = Color.White
             )
             Spacer(modifier = Modifier.width(4.dp)) // Spasi lebih baik
             Text(

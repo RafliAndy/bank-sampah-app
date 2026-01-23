@@ -19,6 +19,7 @@ object Routes {
     const val PROFILE = "profile"
     const val EDIT_PROFILE = "edit_profile"
     const val NOTIFICATIONS = "notifications"
+    const val LEADERBOARD = "leaderboard"
 
 
     // Forum Routes
@@ -78,6 +79,9 @@ fun AppNavigation() {
         }
         composable(Routes.NOTIFICATIONS) {
             NotificationScreen(navController = navController)
+        }
+        composable(Routes.LEADERBOARD) {
+            LeaderboardApp(navController = navController)
         }
 
         // ============ FORUM ROUTES ============

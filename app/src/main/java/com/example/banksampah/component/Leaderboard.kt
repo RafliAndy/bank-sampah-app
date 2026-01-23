@@ -1,91 +1,438 @@
-package com.example.banksampah.component
+package com.example.banksampah
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
+import com.example.banksampah.component.UserProfileImage
 import com.example.banksampah.data.LeaderboardEntry
 import com.example.banksampah.viewmodel.GamificationViewModel
+import com.google.firebase.auth.FirebaseAuth
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LeaderboardApp(navController: NavHostController) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("🏆 Leaderboard") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = colorResource(id = R.color.green),
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "background",
+                modifier = Modifier.fillMaxSize()
+            )
+
+            LeaderboardContent()
+        }
+    }
+}
 
 @Composable
-fun LeaderboardScreen() {
+fun LeaderboardContent() {
     val viewModel: GamificationViewModel = viewModel()
     val leaderboardState by viewModel.leaderboard.collectAsState()
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
     LaunchedEffect(Unit) {
-        viewModel.loadLeaderboard(10)
+        viewModel.loadLeaderboard(20) // Load top 20
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("🏆 Leaderboard", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(16.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // Header Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White.copy(alpha = 0.95f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "🌟 Top Contributors",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colorResource(id = R.color.green)
+                )
+                Text(
+                    "Berdasarkan Poin",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         when (val state = leaderboardState) {
+            is GamificationViewModel.LeaderboardState.Loading -> {
+                LoadingLeaderboard()
+            }
+
             is GamificationViewModel.LeaderboardState.Success -> {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    itemsIndexed(state.entries) { index, entry ->
-                        LeaderboardCard(entry, index + 1)
+                if (state.entries.isEmpty()) {
+                    EmptyLeaderboard()
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        itemsIndexed(state.entries) { index, entry ->
+                            EnhancedLeaderboardCard(
+                                entry = entry,
+                                rank = index + 1,
+                                isCurrentUser = entry.uid == currentUserId
+                            )
+                        }
+
+                        // Spacer at bottom
+                        item {
+                            Spacer(modifier = Modifier.height(80.dp))
+                        }
                     }
                 }
             }
-            is GamificationViewModel.LeaderboardState.Loading -> {
-                CircularProgressIndicator()
-            }
+
             is GamificationViewModel.LeaderboardState.Error -> {
-                Text(state.message, color = Color.Red)
+                ErrorLeaderboard(
+                    message = state.message,
+                    onRetry = { viewModel.loadLeaderboard(20) }
+                )
             }
         }
     }
 }
 
 @Composable
-fun LeaderboardCard(entry: LeaderboardEntry, rank: Int) {
+fun EnhancedLeaderboardCard(
+    entry: LeaderboardEntry,
+    rank: Int,
+    isCurrentUser: Boolean
+) {
+    val context = LocalContext.current
+
+    val backgroundColor = when (rank) {
+        1 -> Color(0xFFFFD700) // Gold
+        2 -> Color(0xFFC0C0C0) // Silver
+        3 -> Color(0xFFCD7F32) // Bronze
+        else -> if (isCurrentUser) {
+            colorResource(id = R.color.greenlight)
+        } else {
+            Color.White.copy(alpha = 0.95f)
+        }
+    }
+
+    val borderColor = if (isCurrentUser) {
+        colorResource(id = R.color.green)
+    } else {
+        Color.Transparent
+    }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (isCurrentUser) {
+                    Modifier.border(2.dp, borderColor, RoundedCornerShape(16.dp))
+                } else {
+                    Modifier
+                }
+            ),
         colors = CardDefaults.cardColors(
-            containerColor = when (rank) {
-                1 -> Color(0xFFFFD700) // Gold
-                2 -> Color(0xFFC0C0C0) // Silver
-                3 -> Color(0xFFCD7F32) // Bronze
-                else -> Color.White
-            }
-        )
+            containerColor = backgroundColor
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (rank <= 3) 6.dp else 2.dp
+        ),
+        shape = RoundedCornerShape(16.dp)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Rank
+            // Rank Badge
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(
+                        when (rank) {
+                            1 -> Brush.radialGradient(
+                                colors = listOf(Color(0xFFFFD700), Color(0xFFFFA500))
+                            )
+                            2 -> Brush.radialGradient(
+                                colors = listOf(Color(0xFFC0C0C0), Color(0xFF808080))
+                            )
+                            3 -> Brush.radialGradient(
+                                colors = listOf(Color(0xFFCD7F32), Color(0xFF8B4513))
+                            )
+                            else -> Brush.radialGradient(
+                                colors = listOf(
+                                    colorResource(id = R.color.green).copy(alpha = 0.3f),
+                                    colorResource(id = R.color.green).copy(alpha = 0.1f)
+                                )
+                            )
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    text = "#$rank",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    text = if (rank <= 3) {
+                        when (rank) {
+                            1 -> "🥇"
+                            2 -> "🥈"
+                            3 -> "🥉"
+                            else -> "#$rank"
+                        }
+                    } else {
+                        "#$rank"
+                    },
+                    fontSize = if (rank <= 3) 24.sp else 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (rank > 3) Color.Black else Color.Transparent
                 )
+            }
 
-                // User info
-                Column {
-                    Text(entry.displayName, fontWeight = FontWeight.Bold)
-                    Text("Level ${entry.level}", fontSize = 12.sp, color = Color.Gray)
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Profile Photo
+            UserProfileImage(
+                uid = entry.uid,
+                size = 56.dp,
+                showAdminBadge = true
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // User Info
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = entry.displayName,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    if (isCurrentUser) {
+                        Text(
+                            text = "YOU",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier
+                                .background(
+                                    colorResource(id = R.color.green),
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Level
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text("\uD83D\uDE80", fontSize = 12.sp)
+                        Text(
+                            "Lv ${entry.level}",
+                            fontSize = 12.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    // Badges
+                    if (entry.badges.isNotEmpty()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text("🏅", fontSize = 12.sp)
+                            Text(
+                                "${entry.badges.size}",
+                                fontSize = 12.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
                 }
             }
 
             // Points
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(
+                    text = "${entry.totalPoints}",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colorResource(id = R.color.green)
+                )
+                Text(
+                    text = "poin",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun LoadingLeaderboard() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CircularProgressIndicator(
+                color = colorResource(id = R.color.green),
+                modifier = Modifier.size(48.dp)
+            )
             Text(
-                "${entry.totalPoints}",
+                "Memuat leaderboard...",
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
+        }
+    }
+}
+
+@Composable
+fun EmptyLeaderboard() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Text("🏆", fontSize = 64.sp)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "Belum Ada Data",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Leaderboard akan muncul saat ada pengguna yang aktif",
+                fontSize = 14.sp,
+                color = Color.Gray,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+fun ErrorLeaderboard(message: String, onRetry: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = Color.Red.copy(alpha = 0.7f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                message,
+                fontSize = 14.sp,
+                color = Color.Red,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorResource(id = R.color.green)
+                )
+            ) {
+                Icon(Icons.Default.Refresh, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Coba Lagi")
+            }
         }
     }
 }
