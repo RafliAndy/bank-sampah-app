@@ -29,6 +29,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.SubcomposeAsyncImage
 import com.example.banksampah.data.ActivityAlbum
+import com.example.banksampah.data.User
+import com.example.banksampah.data.UserRole
 import com.example.banksampah.viewmodel.AlbumViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
@@ -38,16 +40,17 @@ import com.google.firebase.database.FirebaseDatabase
 fun TentangBankSampahScreen(navController: NavHostController) {
     val albumViewModel: AlbumViewModel = viewModel()
     val albumsState by albumViewModel.albumsState.collectAsState()
-    var isAdmin by remember { mutableStateOf(false) }
+    var userRole by remember { mutableStateOf(UserRole.USER) }
 
     // Check admin status
     LaunchedEffect(Unit) {
         albumViewModel.loadAlbums()
         val currentUser = FirebaseAuth.getInstance().currentUser
         currentUser?.uid?.let { uid ->
-            val adminRef = FirebaseDatabase.getInstance().getReference("users/$uid/isAdmin")
-            adminRef.get().addOnSuccessListener { snapshot ->
-                isAdmin = snapshot.getValue(Boolean::class.java) ?: false
+            val userRef = FirebaseDatabase.getInstance().getReference("users/$uid")
+            userRef.get().addOnSuccessListener { snapshot ->
+                val user = snapshot.getValue(User::class.java)
+                userRole = user?.getRoleType() ?: UserRole.USER
             }
         }
     }
@@ -96,7 +99,7 @@ fun TentangBankSampahScreen(navController: NavHostController) {
                 is AlbumViewModel.AlbumsState.Success -> {
                     Column(modifier = Modifier.fillMaxSize()) {
                         // Admin button
-                        if (isAdmin) {
+                        if (userRole == UserRole.ADMIN || userRole == UserRole.KADER) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()

@@ -235,17 +235,25 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
                                     fontSize = 25.sp,
                                 )
 
-                                // Badge Admin
-                                if (state.isAdmin) {
+                                // Badge Role
+                                if (userRole != UserRole.USER) {
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "👑 Admin",
+                                        text = when(userRole) {
+                                            UserRole.ADMIN -> "👑 Admin"
+                                            UserRole.KADER -> "⭐ Kader"
+                                            else -> ""
+                                        },
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.Yellow,
+                                        color = Color.White,
                                         modifier = Modifier
                                             .background(
-                                                Color(0x44000000),
+                                                when(userRole) {
+                                                    UserRole.ADMIN -> Color(0xFFF44336)
+                                                    UserRole.KADER -> Color(0xFFFF9800)
+                                                    else -> Color.Gray
+                                                },
                                                 RoundedCornerShape(12.dp)
                                             )
                                             .padding(horizontal = 8.dp, vertical = 4.dp)
