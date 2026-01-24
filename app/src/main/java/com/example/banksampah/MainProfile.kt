@@ -259,10 +259,6 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
                                             .padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
                                 }
-                                AdminMenuSection(
-                                    navController = navController,
-                                    userRole = userRole
-                                )
                             }
 
                             IconButton(
@@ -282,7 +278,13 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
                             }
                         }
                     }
+                    AdminMenuSection(
+                        navController = navController,
+                        userRole = userRole
+                    )
+
                 }
+
 
                 is ProfileViewModel.ProfileState.Error -> {
                     Box(
@@ -320,6 +322,17 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
             is GamificationViewModel.GamificationState.Error -> {
             }
         }
+
+        when (val state = profileState) {
+            is ProfileViewModel.ProfileState.Success -> {
+                AdminMenuSection(
+                    navController = navController,
+                    userRole = state.user.getRoleType()
+                )
+            }
+            else -> Unit
+        }
+
 
         Card(
             modifier = Modifier

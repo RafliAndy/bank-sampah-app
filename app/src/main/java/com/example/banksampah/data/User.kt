@@ -1,5 +1,7 @@
 package com.example.banksampah.data
 
+import com.google.firebase.database.PropertyName
+
 data class User(
     var uid: String = "",
     var fullName: String = "",
@@ -7,7 +9,11 @@ data class User(
     var email: String = "",
     var profilePhotoUrl: String = "",
     var role: UserRole = UserRole.USER,
+
+    @get:PropertyName("isAdmin")
+    @set:PropertyName("isAdmin")
     var isAdmin: Boolean = false,
+
     var createdAt: Long = 0,
 
     // Data dari UserProfile
@@ -15,10 +21,10 @@ data class User(
     var phoneNumber: String = "",
     var nik: String = ""
 ) {
-    // ✅ Helper untuk Firebase - convert role ke string
+    // Helper untuk Firebase - convert role ke string
     fun getRoleString(): String = role.name
 
-    // ✅ Helper untuk set role dari string (dari Firebase)
+    // Helper untuk set role dari string (dari Firebase)
     fun setRoleFromString(roleString: String) {
         role = try {
             UserRole.valueOf(roleString)
