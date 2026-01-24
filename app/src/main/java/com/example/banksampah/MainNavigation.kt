@@ -95,7 +95,6 @@ fun AppNavigation() {
         composable(Routes.QUESTION) {
             MainQuestion(navController)
         }
-
         composable(
             route = Routes.FORUM_DETAIL,
             arguments = listOf(

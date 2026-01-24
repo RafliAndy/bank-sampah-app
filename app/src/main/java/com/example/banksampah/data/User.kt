@@ -9,13 +9,27 @@ data class User(
     var role: UserRole = UserRole.USER,
     var isAdmin: Boolean = false,
     var createdAt: Long = 0,
+
     // Data dari UserProfile
     var address: String = "",
     var phoneNumber: String = "",
     var nik: String = ""
 ) {
-    // Helper function untuk backward compatibility
+    // ✅ Helper untuk Firebase - convert role ke string
+    fun getRoleString(): String = role.name
+
+    // ✅ Helper untuk set role dari string (dari Firebase)
+    fun setRoleFromString(roleString: String) {
+        role = try {
+            UserRole.valueOf(roleString)
+        } catch (e: Exception) {
+            UserRole.USER
+        }
+    }
+
+    // ✅ Helper function dengan backward compatibility
     fun getRoleType(): UserRole {
+        // Jika isAdmin true tapi role masih USER, upgrade ke ADMIN
         return if (isAdmin && role == UserRole.USER) {
             UserRole.ADMIN
         } else {
@@ -24,9 +38,9 @@ data class User(
     }
 
     // Check permissions
-    fun isKaderOrAdmin(): Boolean = role == UserRole.KADER || role == UserRole.ADMIN
+    fun isKaderOrAdmin(): Boolean = getRoleType() == UserRole.KADER || getRoleType() == UserRole.ADMIN
     fun canManageContent(): Boolean = isKaderOrAdmin()
-    fun canManageUsers(): Boolean = role == UserRole.ADMIN
+    fun canManageUsers(): Boolean = getRoleType() == UserRole.ADMIN
 }
 
 enum class UserRole(val displayName: String, val level: Int) {

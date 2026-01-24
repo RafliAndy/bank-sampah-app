@@ -50,6 +50,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.banksampah.component.BottomBar
 import com.example.banksampah.component.MainTopBar
+import com.example.banksampah.data.User
+import com.example.banksampah.data.UserRole
 import com.example.banksampah.viewmodel.AuthViewModel
 import com.example.banksampah.ui.theme.BankSampahTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -104,18 +106,34 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
                 val userEmail = auth.currentUser?.email ?: email
 
                 // UPDATED: Struktur data baru sesuai User model
-                val userData = hashMapOf(
-                    "uid" to uid,
-                    "fullName" to fullName,
-                    "displayName" to fullName,           // displayName = fullName saat register
-                    "email" to userEmail,
-                    "profilePhotoUrl" to "",             // Kosong dulu, nanti diisi saat edit profile
-                    "isAdmin" to false,                  // User biasa bukan admin
-                    "createdAt" to System.currentTimeMillis(),
-                    "address" to address,
-                    "phoneNumber" to phoneNumber,
-                    "nik" to nik
+                val newUser = User(
+                    uid = uid,
+                    fullName = fullName,
+                    displayName = fullName,
+                    email = userEmail,
+                    profilePhotoUrl = "",
+                    role = UserRole.USER,      // ✅ Explicitly set role
+                    isAdmin = false,            // ✅ Explicitly set isAdmin
+                    createdAt = System.currentTimeMillis(),
+                    address = address,
+                    phoneNumber = phoneNumber,
+                    nik = nik
                 )
+
+                val userData = hashMapOf(
+                    "uid" to newUser.uid,
+                    "fullName" to newUser.fullName,
+                    "displayName" to newUser.displayName,
+                    "email" to newUser.email,
+                    "profilePhotoUrl" to newUser.profilePhotoUrl,
+                    "role" to newUser.role.name,
+                    "isAdmin" to newUser.isAdmin,
+                    "createdAt" to newUser.createdAt,
+                    "address" to newUser.address,
+                    "phoneNumber" to newUser.phoneNumber,
+                    "nik" to newUser.nik
+                )
+
 
                 database.child(uid).setValue(userData).addOnSuccessListener {
                     navController.navigate(Routes.HOME) {
@@ -346,15 +364,5 @@ fun MainRegister(navController: NavHostController, authViewModel: AuthViewModel)
                 )
             }
         }
-    }
-}
-
-@Preview
-@Composable
-fun MainRegisterAppPreview() {
-    BankSampahTheme {
-        val navController = rememberNavController()
-        val authViewModel: AuthViewModel = viewModel()
-        MainRegisterApp(navController = navController, authViewModel = authViewModel)
     }
 }
