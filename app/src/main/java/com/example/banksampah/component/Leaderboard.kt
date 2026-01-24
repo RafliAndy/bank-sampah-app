@@ -243,7 +243,7 @@ fun EnhancedLeaderboardCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Rank Badge
+            // Rank Badge - HANYA ANGKA
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -253,15 +253,12 @@ fun EnhancedLeaderboardCard(
                             1 -> Brush.radialGradient(
                                 colors = listOf(Color(0xFFFFD700), Color(0xFFFFA500))
                             )
-
                             2 -> Brush.radialGradient(
                                 colors = listOf(Color(0xFFC0C0C0), Color(0xFF808080))
                             )
-
                             3 -> Brush.radialGradient(
                                 colors = listOf(Color(0xFFCD7F32), Color(0xFF8B4513))
                             )
-
                             else -> Brush.radialGradient(
                                 colors = listOf(
                                     colorResource(id = R.color.green).copy(alpha = 0.3f),
@@ -272,20 +269,17 @@ fun EnhancedLeaderboardCard(
                     ),
                 contentAlignment = Alignment.Center
             ) {
+                // ✅ HANYA TAMPILKAN ANGKA UNTUK SEMUA RANK
                 Text(
-                    text = if (rank <= 3) {
-                        when (rank) {
-                            1 -> "🥇"
-                            2 -> "🥈"
-                            3 -> "🥉"
-                            else -> "#$rank"
-                        }
-                    } else {
-                        "#$rank"
-                    },
-                    fontSize = if (rank <= 3) 24.sp else 16.sp,
+                    text = "#$rank",
+                    fontSize = if (rank <= 3) 18.sp else 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (rank > 3) Color.Black else Color.Transparent
+                    color = when (rank) {
+                        1 -> Color(0xFF8B4513) // Dark brown untuk gold
+                        2 -> Color(0xFF424242) // Dark gray untuk silver
+                        3 -> Color.White // White untuk bronze
+                        else -> Color.Black
+                    }
                 )
             }
 
@@ -387,6 +381,7 @@ fun EnhancedLeaderboardCard(
         }
     }
 }
+
 @Composable
 fun LoadingLeaderboard() {
     Box(
