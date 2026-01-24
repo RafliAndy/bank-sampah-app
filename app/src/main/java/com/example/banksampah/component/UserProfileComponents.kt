@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
+import com.example.banksampah.data.User
+import com.example.banksampah.data.UserRole
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -175,18 +177,20 @@ fun UserNameWithBadge(
     fontWeight: FontWeight = FontWeight.Bold
 ) {
     var isAdmin by remember(uid) { mutableStateOf(false) }
+    var userRole by remember(uid) { mutableStateOf(UserRole.USER) }
 
-    // Check if user is admin
+    // Check user role
     LaunchedEffect(uid) {
         if (uid.isNotEmpty()) {
-            val adminRef = FirebaseDatabase.getInstance().getReference("users/$uid/isAdmin")
-            adminRef.addValueEventListener(object : ValueEventListener {
+            val userRef = FirebaseDatabase.getInstance().getReference("users/$uid")
+            userRef.addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    isAdmin = snapshot.getValue(Boolean::class.java) ?: false
+                    val user = snapshot.getValue(User::class.java)
+                    userRole = user?.getRoleType() ?: UserRole.USER
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    isAdmin = false
+                    userRole = UserRole.USER
                 }
             })
         }
@@ -200,17 +204,32 @@ fun UserNameWithBadge(
             text = authorName.ifBlank { "Anonymous" },
             fontSize = fontSize,
             fontWeight = fontWeight,
-            color = if (isAdmin) Color(0xFF2196F3) else Color.Black
+            color = when(userRole) {
+                UserRole.ADMIN -> Color(0xFFF44336)
+                UserRole.KADER -> Color(0xFFFF9800)
+                UserRole.USER -> Color.Black
+            }
         )
 
-        // Verified badge untuk admin
-        if (isAdmin) {
-            Icon(
-                imageVector = Icons.Default.Verified,
-                contentDescription = "Admin",
-                tint = Color(0xFF2196F3),
-                modifier = Modifier.size(fontSize.value.dp)
-            )
+        // Badge untuk Admin dan Kader
+        when(userRole) {
+            UserRole.ADMIN -> {
+                Icon(
+                    imageVector = Icons.Default.Verified,
+                    contentDescription = "Admin",
+                    tint = Color(0xFFF44336),
+                    modifier = Modifier.size(fontSize.value.dp)
+                )
+            }
+            UserRole.KADER -> {
+                Icon(
+                    imageVector = Icons.Default.Verified,
+                    contentDescription = "Kader",
+                    tint = Color(0xFFFF9800),
+                    modifier = Modifier.size(fontSize.value.dp)
+                )
+            }
+            else -> Unit
         }
     }
 }

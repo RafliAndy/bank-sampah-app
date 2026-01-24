@@ -45,6 +45,9 @@ import com.example.banksampah.viewmodel.ProfileViewModel
 import com.example.banksampah.viewmodel.GamificationViewModel
 import com.example.banksampah.data.Badge
 import com.example.banksampah.data.BadgeDefinitions
+import com.example.banksampah.component.AdminMenuSection
+import com.example.banksampah.data.UserRole
+
 
 @Composable
 fun MainProfileApp(navController: NavHostController, authViewModel: AuthViewModel) {
@@ -119,6 +122,7 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
 
                 is ProfileViewModel.ProfileState.Success -> {
                     val user = state.user
+                    val userRole = state.user.getRoleType()
 
                     Column {
                         Row(
@@ -247,6 +251,10 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
                                             .padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
                                 }
+                                AdminMenuSection(
+                                    navController = navController,
+                                    userRole = userRole
+                                )
                             }
 
                             IconButton(

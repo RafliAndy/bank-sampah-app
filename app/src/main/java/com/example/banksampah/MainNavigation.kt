@@ -42,6 +42,9 @@ object Routes {
     fun edukasiDetail(edukasiId: String) = "edukasi_detail/$edukasiId"
     fun albumDetail(albumId: String) = "album_detail/$albumId"
     fun adminAlbumPhotos(albumId: String) = "admin_album_photos/$albumId"
+
+    // Admin
+    const val ADMIN_USER_MANAGEMENT = "admin_user_management"
 }
 
 @Composable
@@ -131,6 +134,11 @@ fun AppNavigation() {
         composable(Routes.ADMIN_EDUKASI) {
             AdminEdukasiScreen(navController = navController)
         }
+
+        composable(Routes.ADMIN_USER_MANAGEMENT) {
+            AdminUserManagementScreen(navController = navController)
+        }
+
 
         // ============ ALBUM/GALLERY ROUTES (TENTANG BANK SAMPAH) ============
 

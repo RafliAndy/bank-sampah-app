@@ -3,6 +3,7 @@ package com.example.banksampah.repository
 import android.net.Uri
 import android.util.Log
 import com.example.banksampah.data.User
+import com.example.banksampah.data.UserRole
 import com.example.banksampah.viewmodel.uploadToCloudinary
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -33,6 +34,10 @@ class ProfileRepository {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val user = snapshot.getValue(User::class.java)
                     if (user != null) {
+                        // Backward compatibility: jika role masih default tapi isAdmin true
+                        if (user.role == UserRole.USER && user.isAdmin) {
+                            user.role = UserRole.ADMIN
+                        }
                         continuation.resume(Result.success(user))
                     } else {
                         continuation.resume(Result.failure(Exception("User data not found")))
