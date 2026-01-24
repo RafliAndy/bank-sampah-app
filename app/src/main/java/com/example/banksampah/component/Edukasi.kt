@@ -27,6 +27,8 @@ import com.example.banksampah.R
 import com.example.banksampah.Routes
 import com.example.banksampah.data.EdukasiConstants
 import com.example.banksampah.data.EdukasiItem
+import com.example.banksampah.data.User
+import com.example.banksampah.data.UserRole
 import com.example.banksampah.viewmodel.EdukasiViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
@@ -35,15 +37,16 @@ import com.google.firebase.database.FirebaseDatabase
 fun MainEdukasiSection(navController: NavHostController) {
     val edukasiViewModel: EdukasiViewModel = viewModel()
     val edukasiState by edukasiViewModel.edukasiState.collectAsState()
-    var isAdmin by remember { mutableStateOf(false) }
+    var userRole by remember { mutableStateOf(UserRole.USER) }
 
     // Check admin status
     LaunchedEffect(Unit) {
         val currentUser = FirebaseAuth.getInstance().currentUser
         currentUser?.uid?.let { uid ->
-            val adminRef = FirebaseDatabase.getInstance().getReference("users/$uid/isAdmin")
-            adminRef.get().addOnSuccessListener { snapshot ->
-                isAdmin = snapshot.getValue(Boolean::class.java) ?: false
+            val userRef = FirebaseDatabase.getInstance().getReference("users/$uid")
+            userRef.get().addOnSuccessListener { snapshot ->
+                val user = snapshot.getValue(User::class.java)
+                userRole = user?.getRoleType() ?: UserRole.USER
             }
         }
     }
@@ -60,7 +63,7 @@ fun MainEdukasiSection(navController: NavHostController) {
                 fontSize = 15.sp
             )
 
-            if (isAdmin) {
+            if (userRole == UserRole.ADMIN || userRole == UserRole.KADER) {
                 TextButton(
                     onClick = { navController.navigate(Routes.ADMIN_EDUKASI) }
                 ) {
@@ -71,6 +74,7 @@ fun MainEdukasiSection(navController: NavHostController) {
                         fontWeight = FontWeight.SemiBold
                     )
                 }
+
             }
         }
 

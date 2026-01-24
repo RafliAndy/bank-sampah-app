@@ -2,7 +2,6 @@ package com.example.banksampah.component
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -78,12 +77,14 @@ fun ForumList(navController: NavHostController) {
         }
     }
 
+    // ✅ FIX: Gunakan Column dengan verticalScroll untuk semua konten bisa scroll
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        // ✅ Search Bar
+        // ✅ Search Bar (ikut scroll)
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -109,10 +110,11 @@ fun ForumList(navController: NavHostController) {
 
         Spacer(Modifier.height(12.dp))
 
-        // ✅ Category Filter Chips
+        // ✅ Category Filter Chips (ikut scroll)
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(vertical = 4.dp)
+            contentPadding = PaddingValues(vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
             // Chip "Semua"
             item {
@@ -180,10 +182,12 @@ fun ForumList(navController: NavHostController) {
             Spacer(Modifier.height(8.dp))
         }
 
-        // ✅ List Posts
+        // ✅ List Posts (dalam Column, bukan LazyColumn karena sudah ada scroll parent)
         if (filteredPosts.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -204,15 +208,18 @@ fun ForumList(navController: NavHostController) {
                 }
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+            Column(
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(filteredPosts) { post ->
+                filteredPosts.forEach { post ->
                     ForumItem(post = post, navController = navController)
                 }
             }
         }
+
+        // Spacer untuk bottom padding
+        Spacer(modifier = Modifier.height(100.dp))
     }
 }
 
@@ -311,7 +318,10 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
         Spacer(Modifier.height(12.dp))
 
         // Header dengan foto profil dan nama
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             UserProfileImage(uid = post.uid, size = 40.dp, showAdminBadge = true)
             Spacer(Modifier.width(8.dp))
             Column {

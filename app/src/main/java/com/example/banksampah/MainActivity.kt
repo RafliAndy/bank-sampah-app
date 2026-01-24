@@ -64,7 +64,6 @@ import com.example.banksampah.viewmodel.AuthViewModel
 import com.example.banksampah.repository.NewsRepository
 import com.example.banksampah.ui.theme.BankSampahTheme
 import com.example.banksampah.viewmodel.NewsViewModel
-// ===== TAMBAHKAN IMPORT INI =====
 import com.example.banksampah.component.MainEdukasiSection
 import com.example.banksampah.data.Badge
 import com.example.banksampah.viewmodel.GamificationViewModel

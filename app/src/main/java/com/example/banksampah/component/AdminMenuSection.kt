@@ -22,6 +22,7 @@ import com.example.banksampah.data.UserRole
 
 @Composable
 fun AdminMenuSection(navController: NavHostController, userRole: UserRole) {
+    // ✅ FIX: Hanya tampilkan jika ADMIN atau KADER
     if (userRole != UserRole.ADMIN && userRole != UserRole.KADER) return
 
     Card(
@@ -39,6 +40,7 @@ fun AdminMenuSection(navController: NavHostController, userRole: UserRole) {
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
+            // Header
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -46,39 +48,51 @@ fun AdminMenuSection(navController: NavHostController, userRole: UserRole) {
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = null,
-                    tint = colorResource(id = R.color.green),
+                    tint = when(userRole) {
+                        UserRole.ADMIN -> Color(0xFFF44336)
+                        UserRole.KADER -> Color(0xFFFF9800)
+                        else -> colorResource(id = R.color.green)
+                    },
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
-                    text = if (userRole == UserRole.ADMIN) "Menu Admin" else "Menu Kader",
+                    text = when(userRole) {
+                        UserRole.ADMIN -> "Menu Admin"
+                        UserRole.KADER -> "Menu Kader"
+                        else -> "Menu"
+                    },
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = colorResource(id = R.color.green)
+                    color = when(userRole) {
+                        UserRole.ADMIN -> Color(0xFFF44336)
+                        UserRole.KADER -> Color(0xFFFF9800)
+                        else -> colorResource(id = R.color.green)
+                    }
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Menu items untuk Kader dan Admin
-            if (userRole == UserRole.KADER || userRole == UserRole.ADMIN) {
-                AdminMenuItem(
-                    icon = Icons.Default.PhotoAlbum,
-                    title = "Kelola Album",
-                    description = "Kelola album kegiatan",
-                    onClick = { navController.navigate(Routes.ADMIN_ALBUMS) }
-                )
+            // ✅ Menu untuk KADER dan ADMIN
+            AdminMenuItem(
+                icon = Icons.Default.Book,
+                title = "Kelola Edukasi",
+                description = "Kelola artikel edukasi",
+                onClick = { navController.navigate(Routes.ADMIN_EDUKASI) },
+                iconColor = Color(0xFF4CAF50)
+            )
 
-                Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-                AdminMenuItem(
-                    icon = Icons.Default.Book,
-                    title = "Kelola Edukasi",
-                    description = "Kelola artikel edukasi",
-                    onClick = { navController.navigate(Routes.ADMIN_EDUKASI) }
-                )
-            }
+            AdminMenuItem(
+                icon = Icons.Default.PhotoAlbum,
+                title = "Kelola Album",
+                description = "Kelola album kegiatan",
+                onClick = { navController.navigate(Routes.ADMIN_ALBUMS) },
+                iconColor = Color(0xFF2196F3)
+            )
 
-            // Menu khusus Admin
+            // Menu KHUSUS ADMIN (dipindahkan KELUAR dari if KADER)
             if (userRole == UserRole.ADMIN) {
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -89,19 +103,72 @@ fun AdminMenuSection(navController: NavHostController, userRole: UserRole) {
 
                 Text(
                     text = "Khusus Admin",
-                    fontSize = 12.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Gray,
+                    color = Color.Red,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
 
+                // Tombol Kelola User untuk ADMIN
                 AdminMenuItem(
                     icon = Icons.Default.People,
                     title = "Kelola User",
-                    description = "Kelola semua user aplikasi",
+                    description = "Kelola role & hapus user",
                     onClick = { navController.navigate(Routes.ADMIN_USER_MANAGEMENT) },
                     iconColor = Color(0xFFF44336)
                 )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = {navController.navigate(Routes.MAIN_FORUM)}),
+                    colors = CardDefaults.cardColors(
+                        containerColor = colorResource(id = R.color.greenlight)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Forum,
+                                contentDescription = null,
+                                tint = colorResource(id = R.color.green),
+                                modifier = Modifier.size(28.dp)
+                            )
+
+                            Column {
+                                Text(
+                                    text = "Kelola Forum",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Kelola topik forum",
+                                    fontSize = 13.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = Color.Gray
+                        )
+                    }
+                }
+
             }
         }
     }

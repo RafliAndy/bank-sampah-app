@@ -31,22 +31,12 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 
-/**
- * Data class untuk menyimpan informasi profil user
- */
 data class UserProfileData(
     val profilePhotoUrl: String = "",
-    val isAdmin: Boolean = false,
+    val role: UserRole = UserRole.USER,
     val displayName: String = ""
 )
 
-/**
- * Composable untuk menampilkan foto profil user dengan badge admin (jika admin)
- * @param uid User ID dari Firebase
- * @param size Ukuran foto profil (default 40.dp)
- * @param showAdminBadge Tampilkan badge admin atau tidak (default true)
- * @param modifier Modifier tambahan
- */
 @Composable
 fun UserProfileImage(
     uid: String,
@@ -64,21 +54,25 @@ fun UserProfileImage(
             userRef.addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val photoUrl = snapshot.child("profilePhotoUrl").getValue(String::class.java) ?: ""
-                    val isAdmin = snapshot.child("isAdmin").getValue(Boolean::class.java) ?: false
-                    userData = UserProfileData(photoUrl, isAdmin)
+                    val roleString = snapshot.child("role").getValue(String::class.java) ?: "USER"
+                    val role = try {
+                        UserRole.valueOf(roleString)
+                    } catch (e: Exception) {
+                        // Backward compatibility: cek isAdmin
+                        val isAdmin = snapshot.child("isAdmin").getValue(Boolean::class.java) ?: false
+                        if (isAdmin) UserRole.ADMIN else UserRole.USER
+                    }
+                    userData = UserProfileData(photoUrl, role)
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    // Handle error - set default values
                     userData = UserProfileData()
                 }
             })
         }
     }
 
-    Box(
-        modifier = modifier.size(size)
-    ) {
+    Box(modifier = modifier.size(size)) {
         // Profile Image Container
         Box(
             modifier = Modifier
@@ -86,16 +80,15 @@ fun UserProfileImage(
                 .clip(CircleShape)
                 .background(Color.LightGray)
                 .then(
-                    // Tambahkan border biru untuk admin
-                    if (userData?.isAdmin == true && showAdminBadge) {
-                        Modifier.border(2.dp, Color(0xFF2196F3), CircleShape)
-                    } else {
-                        Modifier
+                    // Border sesuai role
+                    when (userData?.role) {
+                        UserRole.ADMIN -> Modifier.border(2.dp, Color(0xFFF44336), CircleShape)
+                        UserRole.KADER -> Modifier.border(2.dp, Color(0xFFFF9800), CircleShape)
+                        else -> Modifier
                     }
                 )
         ) {
             if (userData?.profilePhotoUrl?.isNotEmpty() == true) {
-                // Tampilkan foto dari Cloudinary/URL
                 SubcomposeAsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(userData?.profilePhotoUrl)
@@ -117,7 +110,6 @@ fun UserProfileImage(
                         }
                     },
                     error = {
-                        // Fallback ke icon default jika gagal load
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = "Default Profile",
@@ -129,7 +121,6 @@ fun UserProfileImage(
                     }
                 )
             } else {
-                // Icon default jika belum ada foto
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "Default Profile",
@@ -141,19 +132,29 @@ fun UserProfileImage(
             }
         }
 
-        // Admin Badge (verified icon di pojok kanan bawah)
-        if (userData?.isAdmin == true && showAdminBadge) {
+        // Badge di pojok kanan bawah (ADMIN atau KADER)
+        if (showAdminBadge && (userData?.role == UserRole.ADMIN || userData?.role == UserRole.KADER)) {
             Box(
                 modifier = Modifier
                     .size(size * 0.35f)
                     .align(Alignment.BottomEnd)
                     .clip(CircleShape)
-                    .background(Color(0xFF2196F3))
+                    .background(
+                        when (userData?.role) {
+                            UserRole.ADMIN -> Color(0xFFF44336)
+                            UserRole.KADER -> Color(0xFFFF9800)
+                            else -> Color.Gray
+                        }
+                    )
                     .padding(2.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Verified,
-                    contentDescription = "Admin Badge",
+                    contentDescription = when (userData?.role) {
+                        UserRole.ADMIN -> "Admin Badge"
+                        UserRole.KADER -> "Kader Badge"
+                        else -> "Badge"
+                    },
                     tint = Color.White,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -162,13 +163,6 @@ fun UserProfileImage(
     }
 }
 
-/**
- * Composable untuk menampilkan nama user dengan badge admin (jika admin)
- * @param uid User ID dari Firebase
- * @param authorName Nama author (fallback jika data belum load)
- * @param fontSize Ukuran font (default 14.sp)
- * @param fontWeight Font weight (default Bold)
- */
 @Composable
 fun UserNameWithBadge(
     uid: String,
@@ -176,7 +170,6 @@ fun UserNameWithBadge(
     fontSize: TextUnit = 14.sp,
     fontWeight: FontWeight = FontWeight.Bold
 ) {
-    var isAdmin by remember(uid) { mutableStateOf(false) }
     var userRole by remember(uid) { mutableStateOf(UserRole.USER) }
 
     // Check user role
@@ -185,8 +178,14 @@ fun UserNameWithBadge(
             val userRef = FirebaseDatabase.getInstance().getReference("users/$uid")
             userRef.addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val user = snapshot.getValue(User::class.java)
-                    userRole = user?.getRoleType() ?: UserRole.USER
+                    val roleString = snapshot.child("role").getValue(String::class.java) ?: "USER"
+                    userRole = try {
+                        UserRole.valueOf(roleString)
+                    } catch (e: Exception) {
+                        // Backward compatibility
+                        val isAdmin = snapshot.child("isAdmin").getValue(Boolean::class.java) ?: false
+                        if (isAdmin) UserRole.ADMIN else UserRole.USER
+                    }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
@@ -200,18 +199,19 @@ fun UserNameWithBadge(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
+        // ✅ FIX: Pastikan warna SELALU di-set, tidak bergantung kondisi
         Text(
             text = authorName.ifBlank { "Anonymous" },
             fontSize = fontSize,
             fontWeight = fontWeight,
             color = when(userRole) {
-                UserRole.ADMIN -> Color(0xFFF44336)
-                UserRole.KADER -> Color(0xFFFF9800)
-                UserRole.USER -> Color.Black
+                UserRole.ADMIN -> Color(0xFFF44336) // Merah untuk Admin
+                UserRole.KADER -> Color(0xFFFF9800) // Orange untuk Kader
+                UserRole.USER -> Color.Black // Hitam untuk User biasa
             }
         )
 
-        // Badge untuk Admin dan Kader
+        // Badge icon untuk Admin dan Kader
         when(userRole) {
             UserRole.ADMIN -> {
                 Icon(
