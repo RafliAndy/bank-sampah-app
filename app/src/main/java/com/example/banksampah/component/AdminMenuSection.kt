@@ -111,10 +111,11 @@ fun AdminMenuSection(navController: NavHostController, userRole: UserRole) {
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
 
+                // ✅ FIX: Tombol Kelola User
                 AdminMenuItem(
                     icon = Icons.Default.People,
                     title = "Kelola User",
-                    description = "Kelola semua user aplikasi",
+                    description = "Kelola role & hapus user",
                     onClick = { navController.navigate(Routes.ADMIN_USER_MANAGEMENT) },
                     iconColor = Color(0xFFF44336)
                 )
