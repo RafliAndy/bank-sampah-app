@@ -104,6 +104,16 @@ fun Question(
                     return@Button
                 }
 
+                if (title.length > 200) {
+                    Toast.makeText(context, "Judul maksimal 200 karakter", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                if (bodytext.length > 5000) {
+                    Toast.makeText(context, "Pertanyaan maksimal 5000 karakter", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
                 val user = FirebaseAuth.getInstance().currentUser
                 if (user == null) {
                     Toast.makeText(context, "User belum login", Toast.LENGTH_SHORT).show()

@@ -119,13 +119,13 @@ data class PointTransaction(
 
 // Point earning reasons
 object PointReasons {
-    const val CREATE_POST = "Membuat post baru"
-    const val CREATE_REPLY = "Membuat reply"
-    const val POST_UPVOTED = "Post mendapat upvote"
-    const val REPLY_UPVOTED = "Reply mendapat upvote"
-    const val HELPFUL_ANSWER = "Reply ditandai sebagai helpful"
-    const val DAILY_LOGIN = "Login harian"
-    const val STREAK_BONUS = "Bonus login berturut-turut"
+    const val CREATE_POST = "Membuat post baru" // +10 poin
+    const val CREATE_REPLY = "Membuat reply" // +5 poin
+    const val POST_UPVOTED = "Post mendapat upvote" // +3 poin
+    const val REPLY_UPVOTED = "Reply mendapat upvote" // +2 poin
+    const val HELPFUL_ANSWER = "Reply ditandai sebagai helpful" // +15 poin
+    const val DAILY_LOGIN = "Login harian" // +1 poin
+    const val STREAK_BONUS = "Bonus login berturut-turut" // dynamic
 }
 
 // ========== LEVEL SYSTEM ==========

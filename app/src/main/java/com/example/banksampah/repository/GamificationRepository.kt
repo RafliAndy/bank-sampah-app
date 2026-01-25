@@ -211,7 +211,6 @@ class GamificationRepository {
 
 
     // ========== USER GAMIFICATION ==========
-
     suspend fun getUserGamification(uid: String): Result<UserGamification> =
         suspendCoroutine { continuation ->
             database.child("gamification").child(uid)
