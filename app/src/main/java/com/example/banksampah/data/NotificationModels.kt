@@ -31,7 +31,10 @@ data class Notification(
 enum class NotificationType {
     FORUM_REPLY,        // Balasan langsung ke post
     NESTED_REPLY,       // Balasan ke balasan
-    POST_UPDATE         // Update pada post (opsional untuk fitur masa depan)
+    POST_UPVOTE,        // Post mendapat upvote
+    REPLY_UPVOTE,       // Reply mendapat upvote
+    HELPFUL_ANSWER,     // Reply ditandai sebagai helpful answer
+    POST_UPDATE         // Update pada post
 }
 
 data class NotificationCount(

@@ -18,7 +18,7 @@ class NotificationRepository {
     private val database = FirebaseDatabase.getInstance().reference
     private val TAG = "NotificationRepository"
 
-    // Buat notifikasi ketika ada reply ke post
+    // Notifikasi ketika ada reply ke post
     suspend fun createPostReplyNotification(
         postId: String,
         postOwnerId: String,
@@ -65,6 +65,172 @@ class NotificationRepository {
             Result.failure(e)
         }
     }
+
+    // Notifikasi ketika ada Upvote Post
+    suspend fun createPostUpvoteNotification(
+        postId: String,
+        postOwnerId: String,
+        voterId: String
+    ): Result<Unit> {
+        return try {
+            // Jangan buat notifikasi jika user upvote post sendiri
+            if (voterId == postOwnerId) {
+                return Result.success(Unit)
+            }
+
+            val currentUser = auth.currentUser ?: throw Exception("User not logged in")
+
+            // Ambil nama user yang upvote
+            val userSnapshot = database.child("users").child(voterId).get().await()
+            val userName = userSnapshot.child("displayName").getValue(String::class.java)
+                ?: userSnapshot.child("fullName").getValue(String::class.java)
+                ?: "Seseorang"
+
+            // Ambil judul post
+            val postSnapshot = database.child("posts").child(postId).get().await()
+            val postTitle = postSnapshot.child("title").getValue(String::class.java)
+                ?: "post Anda"
+
+            val notification = Notification(
+                userId = postOwnerId,
+                type = "POST_UPVOTE",
+                title = "👍 Post Anda Mendapat Like",
+                message = "$userName menyukai post \"$postTitle\"",
+                postId = postId,
+                fromUserId = voterId,
+                fromUserName = userName
+            )
+
+            val newRef = database.child("notifications").push()
+            notification.id = newRef.key ?: ""
+            newRef.setValue(notification).await()
+
+            Log.d(TAG, "Post upvote notification created for user: $postOwnerId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error creating post upvote notification", e)
+            Result.failure(e)
+        }
+    }
+
+    // Notifikasi ketika ada Upvote Reply
+    suspend fun createReplyUpvoteNotification(
+        postId: String,
+        replyId: String,
+        replyOwnerId: String,
+        voterId: String
+    ): Result<Unit> {
+        return try {
+            // Jangan buat notifikasi jika user upvote reply sendiri
+            if (voterId == replyOwnerId) {
+                return Result.success(Unit)
+            }
+
+            // Ambil nama user yang upvote
+            val userSnapshot = database.child("users").child(voterId).get().await()
+            val userName = userSnapshot.child("displayName").getValue(String::class.java)
+                ?: userSnapshot.child("fullName").getValue(String::class.java)
+                ?: "Seseorang"
+
+            val notification = Notification(
+                userId = replyOwnerId,
+                type = "REPLY_UPVOTE",
+                title = "👍 Reply Anda Mendapat Like",
+                message = "$userName menyukai reply Anda",
+                postId = postId,
+                replyId = replyId,
+                fromUserId = voterId,
+                fromUserName = userName
+            )
+
+            val newRef = database.child("notifications").push()
+            notification.id = newRef.key ?: ""
+            newRef.setValue(notification).await()
+
+            Log.d(TAG, "Reply upvote notification created for user: $replyOwnerId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error creating reply upvote notification", e)
+            Result.failure(e)
+        }
+    }
+
+
+    // Notifikasi ketika ada Helpful Answer
+    suspend fun createHelpfulAnswerNotification(
+        postId: String,
+        replyId: String,
+        replyOwnerId: String,
+        postOwnerId: String
+    ): Result<Unit> {
+        return try {
+            // Ambil nama post owner (yang menandai helpful)
+            val userSnapshot = database.child("users").child(postOwnerId).get().await()
+            val userName = userSnapshot.child("displayName").getValue(String::class.java)
+                ?: userSnapshot.child("fullName").getValue(String::class.java)
+                ?: "Pemilik post"
+
+            // Ambil judul post
+            val postSnapshot = database.child("posts").child(postId).get().await()
+            val postTitle = postSnapshot.child("title").getValue(String::class.java)
+                ?: "post"
+
+            val notification = Notification(
+                userId = replyOwnerId,
+                type = "HELPFUL_ANSWER",
+                title = "⭐ Reply Anda Ditandai Membantu",
+                message = "$userName menandai reply Anda sebagai jawaban yang membantu untuk \"$postTitle\"",
+                postId = postId,
+                replyId = replyId,
+                fromUserId = postOwnerId,
+                fromUserName = userName
+            )
+
+            val newRef = database.child("notifications").push()
+            notification.id = newRef.key ?: ""
+            newRef.setValue(notification).await()
+
+            Log.d(TAG, "Helpful answer notification created for user: $replyOwnerId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error creating helpful answer notification", e)
+            Result.failure(e)
+        }
+    }
+
+
+    // Check Duplikasi Notifikasi
+    private suspend fun checkDuplicateVoteNotification(
+        userId: String,
+        targetId: String,
+        type: String
+    ): Boolean {
+        return try {
+            val oneHourAgo = System.currentTimeMillis() - (60 * 60 * 1000)
+
+            val snapshot = database.child("notifications")
+                .orderByChild("userId")
+                .equalTo(userId)
+                .get()
+                .await()
+
+            for (notifSnapshot in snapshot.children) {
+                val notification = notifSnapshot.getValue(Notification::class.java) ?: continue
+
+                if (notification.type == type &&
+                    notification.postId == targetId &&
+                    notification.timestamp > oneHourAgo) {
+                    return true // Notifikasi sudah ada
+                }
+            }
+
+            false
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking duplicate notification", e)
+            false
+        }
+    }
+
 
     // Buat notifikasi ketika ada reply ke reply (nested reply)
     suspend fun createNestedReplyNotification(

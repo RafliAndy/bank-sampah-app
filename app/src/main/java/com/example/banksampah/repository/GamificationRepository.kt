@@ -197,12 +197,49 @@ class GamificationRepository {
                 return
             }
 
+            val voterId = auth.currentUser?.uid ?: return
+
+            // Jangan kirim notifikasi untuk upvote sendiri
+            if (voterId == authorUid) {
+                return
+            }
+
             val points = if (targetType == VoteType.POST) 3 else 2
             val reason = if (targetType == VoteType.POST)
                 PointReasons.POST_UPVOTED else PointReasons.REPLY_UPVOTED
 
             Log.d(TAG, "Awarding $points points to $authorUid for $reason")
             addPoints(authorUid, points, reason)
+
+            // ===== NOTIFICATION VOTING =====
+            val notificationRepo = NotificationRepository()
+            try {
+                when (targetType) {
+                    VoteType.POST -> {
+                        notificationRepo.createPostUpvoteNotification(
+                            postId = targetId,
+                            postOwnerId = authorUid,
+                            voterId = voterId
+                        )
+                    }
+                    VoteType.REPLY -> {
+                        // Ambil postId dari reply
+                        val replySnapshot = database.child("replies").child(targetId).get().await()
+                        val postId = replySnapshot.child("postId").getValue(String::class.java) ?: return
+
+                        notificationRepo.createReplyUpvoteNotification(
+                            postId = postId,
+                            replyId = targetId,
+                            replyOwnerId = authorUid,
+                            voterId = voterId
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error creating vote notification: ${e.message}", e)
+                // Don't throw - vote points should still succeed even if notification fails
+            }
+
         } catch (e: Exception) {
             Log.e(TAG, "Error awarding points for vote: ${e.message}", e)
             // Don't throw - points are bonus, vote should still succeed
@@ -282,7 +319,6 @@ class GamificationRepository {
     }
 
     // ========== HELPFUL ANSWER SYSTEM ==========
-
     suspend fun markReplyAsHelpful(postId: String, replyId: String): Result<Unit> {
         return try {
             val uid = auth.currentUser?.uid ?: throw Exception("Not logged in")
@@ -310,6 +346,20 @@ class GamificationRepository {
             updateUserGamification(gamification.copy(
                 helpfulAnswerCount = gamification.helpfulAnswerCount + 1
             ))
+
+            // ===== NOTIFICATION HELPFUL ANSWER =====
+            try {
+                val notificationRepo = NotificationRepository()
+                notificationRepo.createHelpfulAnswerNotification(
+                    postId = postId,
+                    replyId = replyId,
+                    replyOwnerId = replyAuthorUid,
+                    postOwnerId = postOwnerId
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Error creating helpful answer notification: ${e.message}", e)
+                // Don't throw - marking helpful should still succeed even if notification fails
+            }
 
             Result.success(Unit)
         } catch (e: Exception) {

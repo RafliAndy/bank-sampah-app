@@ -163,6 +163,41 @@ fun NotificationCard(
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
 
+    // Icon dan warna berdasarkan tipe notifikasi
+    val (icon, backgroundColor, accentColor) = when (notification.getNotificationType()) {
+        NotificationType.FORUM_REPLY -> Triple(
+            Icons.Default.Comment,
+            colorResource(id = R.color.greenlight),
+            colorResource(id = R.color.green)
+        )
+        NotificationType.NESTED_REPLY -> Triple(
+            Icons.Default.Reply,
+            Color(0xFFE3F2FD),
+            Color(0xFF2196F3)
+        )
+        NotificationType.POST_UPVOTE -> Triple(
+            Icons.Default.ThumbUp,
+            Color(0xFFFFF3E0),
+            Color(0xFFFF9800)
+        )
+        NotificationType.REPLY_UPVOTE -> Triple(
+            Icons.Default.ThumbUp,
+            Color(0xFFFFF3E0),
+            Color(0xFFFF9800)
+        )
+        NotificationType.HELPFUL_ANSWER -> Triple(
+            Icons.Default.Star,
+            Color(0xFFFCE4EC),
+            Color(0xFFE91E63)
+        )
+        else -> Triple(
+            Icons.Default.Notifications,
+            Color.White.copy(alpha = 0.95f),
+            colorResource(id = R.color.green)
+        )
+    }
+
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -187,19 +222,15 @@ fun NotificationCard(
                 modifier = Modifier
                     .size(48.dp)
                     .background(
-                        colorResource(id = R.color.green).copy(alpha = 0.2f),
+                        accentColor.copy(alpha = 0.2f),
                         CircleShape
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = when (notification.getNotificationType()) {
-                        NotificationType.FORUM_REPLY -> Icons.Default.Comment
-                        NotificationType.NESTED_REPLY -> Icons.Default.Reply
-                        NotificationType.POST_UPDATE -> Icons.Default.Update
-                    },
+                    imageVector = icon,
                     contentDescription = null,
-                    tint = colorResource(id = R.color.green),
+                    tint = accentColor,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -228,7 +259,7 @@ fun NotificationCard(
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
-                                .background(Color.Red, CircleShape)
+                                .background(accentColor, CircleShape)
                         )
                     }
                 }
