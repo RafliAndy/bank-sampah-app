@@ -1,5 +1,6 @@
 package com.example.banksampah
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -47,11 +48,10 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.example.banksampah.repository.NotificationRepository
 import com.example.banksampah.viewmodel.GamificationViewModel
+import kotlinx.coroutines.tasks.await
 
 @Composable
 fun ForumDetail(
@@ -61,6 +61,7 @@ fun ForumDetail(
 ) {
     val authState = authViewModel.authState.observeAsState()
     val context = LocalContext.current
+    val lifecycleScope = rememberCoroutineScope()
     val gamificationViewModel: GamificationViewModel = viewModel()
 
     var post by remember { mutableStateOf<ForumPost?>(null) }
@@ -104,10 +105,17 @@ fun ForumDetail(
     // Load post data
     LaunchedEffect(postId) {
         val postRef = FirebaseDatabase.getInstance().getReference("posts/$postId")
-        postRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                post = snapshot.getValue(ForumPost::class.java)?.apply {
-                    if (id.isEmpty()) id = snapshot.key ?: postId
+        postRef.addValueEventListener(object : com.google.firebase.database.ValueEventListener {
+            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                Log.d("ForumDetail", "🟢 Post data updated")
+
+                val updatedPost = snapshot.getValue(ForumPost::class.java)
+                if (updatedPost != null) {
+                    updatedPost.id = snapshot.key ?: ""
+                    Log.d("ForumDetail", "📊 Upvotes: ${updatedPost.upvotes}, Downvotes: ${updatedPost.downvotes}")
+
+                    // Update post state
+                    post = updatedPost
                 }
             }
             override fun onCancelled(error: DatabaseError) {}
@@ -196,40 +204,55 @@ fun ForumDetail(
                         newReplyRef.setValue(newReply).addOnSuccessListener {
                             gamificationViewModel.awardPointsForNewReply()
                             // ===== BUAT NOTIFIKASI =====
-                            CoroutineScope(Dispatchers.IO).launch {
+                            lifecycleScope.launch {
                                 val notificationRepo = NotificationRepository()
 
-                                if (replyingTo.first == null) {
-                                    // Reply langsung ke post - notifikasi ke pemilik post
-                                    post?.let { p ->
-                                        notificationRepo.createPostReplyNotification(
-                                            postId = postId,
-                                            postOwnerId = p.uid,
-                                            replyId = newReply.id
-                                        )
-                                    }
-                                } else {
-                                    // Reply ke reply - notifikasi ke pemilik reply yang dibalas
-                                    repliesRef.child(replyingTo.first!!).get().addOnSuccessListener { snapshot ->
-                                        val parentReplyOwnerId = snapshot.child("uid").getValue(String::class.java)
+                                try {
+                                    if (replyingTo.first == null) {
+                                        // ✅ Reply langsung ke post
+                                        Log.d("FORUM_DETAIL", "Creating FORUM_REPLY notification")
+                                        post?.let { p ->
+                                            notificationRepo.createPostReplyNotification(
+                                                postId = postId,
+                                                postOwnerId = p.uid,
+                                                replyId = newReply.id
+                                            )
+                                        }
+                                    } else {
+                                        // ✅ Reply ke reply (NESTED)
+                                        Log.d("FORUM_DETAIL", "Creating NESTED_REPLY notification for parentId: ${replyingTo.first}")
 
-                                        if (parentReplyOwnerId != null) {
-                                            CoroutineScope(Dispatchers.IO).launch {
-                                                notificationRepo.createNestedReplyNotification(
-                                                    postId = postId,
-                                                    parentReplyId = replyingTo.first!!,
-                                                    parentReplyOwnerId = parentReplyOwnerId,
-                                                    newReplyId = newReply.id
-                                                )
-                                            }
+                                        // Gunakan suspend function dengan await
+                                        val parentReplySnapshot = repliesRef.child(replyingTo.first!!).get().await()
+                                        val parentReplyOwnerId = parentReplySnapshot.child("uid").getValue(String::class.java)
+
+                                        Log.d("FORUM_DETAIL", "parentReplyOwnerId: $parentReplyOwnerId, currentUser: ${currentUser?.uid}")
+
+                                        if (parentReplyOwnerId != null && parentReplyOwnerId != currentUser?.uid) {
+                                            Log.d("FORUM_DETAIL", "Calling createNestedReplyNotification")
+                                            val result = notificationRepo.createNestedReplyNotification(
+                                                postId = postId,
+                                                parentReplyId = replyingTo.first!!,
+                                                parentReplyOwnerId = parentReplyOwnerId,
+                                                newReplyId = newReply.id
+                                            )
+                                            Log.d("FORUM_DETAIL", "createNestedReplyNotification result: $result")
+                                        } else {
+                                            Log.d("FORUM_DETAIL", "Skipped notification: same user or null owner")
                                         }
                                     }
+                                } catch (e: Exception) {
+                                    Log.e("FORUM_DETAIL", "❌ Error creating notification: ${e.message}", e)
                                 }
                             }
+
+                            replyText = ""
+                            replyingTo = null to null
+                        }.addOnFailureListener { error ->
+                            Log.e("FORUM_DETAIL", "❌ Error setValue reply: ${error.message}", error)
+                            Toast.makeText(context, "Gagal mengirim balasan", Toast.LENGTH_SHORT).show()
                         }
 
-                        replyText = ""
-                        replyingTo = null to null
                     }
                 }
             )

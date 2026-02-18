@@ -53,27 +53,6 @@ class ForumViewModel : ViewModel() {
         }
     }
 
-    fun loadPostsByUser(uid: String) {
-        viewModelScope.launch {
-            _postsState.value = PostsState.Loading
-
-            val result = repository.getPostsByUser(uid)
-
-            if (result.isSuccess) {
-                val posts = result.getOrThrow()
-                _postsState.value = if (posts.isEmpty()) {
-                    PostsState.Empty("User belum membuat postingan")
-                } else {
-                    PostsState.Success(posts)
-                }
-            } else {
-                _postsState.value = PostsState.Error(
-                    result.exceptionOrNull()?.message ?: "Gagal memuat postingan"
-                )
-            }
-        }
-    }
-
     fun deletePost(postId: String) {
         viewModelScope.launch {
             _deleteState.value = DeleteState.Deleting
