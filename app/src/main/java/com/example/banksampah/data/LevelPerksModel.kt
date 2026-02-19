@@ -78,26 +78,6 @@ object LevelPerksData {
             description = "Badge khusus Mentor - tampil dengan lencana eksklusif",
             icon = "👑",
             category = PerkCategory.BADGE
-        ),
-
-        // Level 10 - Fitur eksklusif
-        LevelPerk(
-            id = "featured_post",
-            level = 10,
-            title = "Highlighted Posts",
-            description = "Post Anda akan ditampilkan di bagian Featured",
-            icon = "⭐",
-            category = PerkCategory.EXCLUSIVE
-        ),
-
-        // Level 15
-        LevelPerk(
-            id = "moderator_like",
-            level = 15,
-            title = "Moderator Tools",
-            description = "Tools khusus untuk membantu moderasi forum",
-            icon = "🛡️",
-            category = PerkCategory.EXCLUSIVE
         )
     )
 
