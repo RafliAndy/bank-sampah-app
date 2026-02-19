@@ -14,8 +14,7 @@ class GamificationRepository {
     private val database = FirebaseDatabase.getInstance().reference
     private val TAG = "GamificationRepo"
 
-    // ========== VOTING SYSTEM (ENHANCED) ==========
-
+    // ========== VOTING SYSTEM ==========
     suspend fun vote(targetId: String, targetType: VoteType, voteValue: Int): Result<Unit> {
         return try {
             val uid = auth.currentUser?.uid
@@ -557,7 +556,6 @@ class GamificationRepository {
 
 
     // ========== DAILY LOGIN STREAK ==========
-
     suspend fun updateLoginStreak(uid: String): Result<Unit> {
         return try {
             val gamification = getUserGamification(uid).getOrThrow()
@@ -588,6 +586,66 @@ class GamificationRepository {
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    // ========== PERK SYSTEM ==========
+// Get user's unlocked perks
+    suspend fun getUserUnlockedPerks(uid: String): Result<List<LevelPerk>> {
+        return try {
+            val gamification = getUserGamification(uid).getOrNull()
+                ?: return Result.success(emptyList())
+
+            val perks = LevelPerksData.getPerksUntilLevel(gamification.level)
+            Result.success(perks)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting unlocked perks", e)
+            Result.failure(e)
+        }
+    }
+
+    // Update custom title
+    suspend fun updateCustomTitle(uid: String, title: String): Result<Unit> {
+        return try {
+            if (title.length > 20) {
+                throw Exception("Title maksimal 20 karakter")
+            }
+
+            database.child("users").child(uid)
+                .child("customTitle")
+                .setValue(title)
+                .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating custom title", e)
+            Result.failure(e)
+        }
+    }
+
+    // Update profile color
+    suspend fun updateProfileColor(uid: String, colorHex: String): Result<Unit> {
+        return try {
+            database.child("users").child(uid)
+                .child("profileColor")
+                .setValue(colorHex)
+                .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating profile color", e)
+            Result.failure(e)
+        }
+    }
+
+    // Check if perk unlocked
+    suspend fun isPerkUnlocked(uid: String, perkId: String): Boolean {
+        return try {
+            val gamification = getUserGamification(uid).getOrNull() ?: return false
+            val perk = LevelPerksData.ALL_PERKS.find { it.id == perkId } ?: return false
+            gamification.level >= perk.level
+        } catch (e: Exception) {
+            false
         }
     }
 }

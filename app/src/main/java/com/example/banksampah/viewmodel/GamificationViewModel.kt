@@ -52,6 +52,8 @@ class GamificationViewModel : ViewModel() {
         viewModelScope.launch {
             _userGamification.value = GamificationState.Loading
 
+            loadUnlockedPerks()
+
             val uid = auth.currentUser?.uid
             if (uid == null) {
                 _userGamification.value = GamificationState.Error("User not logged in")
@@ -69,7 +71,6 @@ class GamificationViewModel : ViewModel() {
     }
 
     // ========== VOTING ==========
-
     fun getUserVote(targetId: String, targetType: VoteType) {
         viewModelScope.launch {
             val uid = auth.currentUser?.uid ?: return@launch
@@ -150,7 +151,6 @@ class GamificationViewModel : ViewModel() {
     }
 
     // ========== HELPFUL ANSWER ==========
-
     fun markReplyAsHelpful(postId: String, replyId: String) {
         viewModelScope.launch {
             val result = repository.markReplyAsHelpful(postId, replyId)
@@ -161,7 +161,6 @@ class GamificationViewModel : ViewModel() {
     }
 
     // ========== LEADERBOARD ==========
-
     fun loadLeaderboard(limit: Int = 10, isMonthly: Boolean = false) {
         viewModelScope.launch {
             _leaderboard.value = LeaderboardState.Loading
@@ -218,8 +217,47 @@ class GamificationViewModel : ViewModel() {
         }
     }
 
-    // ========== HELPER FUNCTIONS ==========
+    // ========== PERK ==========
+    private val _unlockedPerks = MutableStateFlow<List<LevelPerk>>(emptyList())
+    val unlockedPerks: StateFlow<List<LevelPerk>> = _unlockedPerks
 
+    private val _userPerks = MutableStateFlow<UserUnlockedPerks?>(null)
+    val userPerks: StateFlow<UserUnlockedPerks?> = _userPerks
+
+    fun loadUnlockedPerks() {
+        viewModelScope.launch {
+            val uid = auth.currentUser?.uid ?: return@launch
+
+            val result = repository.getUserUnlockedPerks(uid)
+            if (result.isSuccess) {
+                _unlockedPerks.value = result.getOrThrow()
+            }
+        }
+    }
+
+    fun updateCustomTitle(newTitle: String) {
+        viewModelScope.launch {
+            val uid = auth.currentUser?.uid ?: return@launch
+
+            val result = repository.updateCustomTitle(uid, newTitle)
+            if (result.isSuccess) {
+                loadUnlockedPerks()
+            }
+        }
+    }
+
+    fun updateProfileColor(colorHex: String) {
+        viewModelScope.launch {
+            val uid = auth.currentUser?.uid ?: return@launch
+
+            val result = repository.updateProfileColor(uid, colorHex)
+            if (result.isSuccess) {
+                loadUnlockedPerks()
+            }
+        }
+    }
+
+    // ========== HELPER FUNCTIONS ==========
     fun getLevelProgress(): Float {
         val state = _userGamification.value
         if (state is GamificationState.Success) {

@@ -45,6 +45,9 @@ import com.example.banksampah.viewmodel.GamificationViewModel
 import com.example.banksampah.data.Badge
 import com.example.banksampah.data.BadgeDefinitions
 import com.example.banksampah.component.AdminMenuSection
+import com.example.banksampah.component.CustomTitleDialog
+import com.example.banksampah.component.LevelPerksSection
+import com.example.banksampah.component.ProfileColorDialog
 import com.example.banksampah.data.UserRole
 
 
@@ -96,6 +99,9 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
     val profileState by profileViewModel.profileState.collectAsState()
     val gamificationState by gamificationViewModel.userGamification.collectAsState()
     val context = LocalContext.current
+
+    var showCustomTitleDialog by remember { mutableStateOf(false) }
+    var showProfileColorDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         gamificationViewModel.loadUserGamification()
@@ -379,9 +385,51 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
             }
         }
 
+// ===== LEVEL PERKS SECTION =====
+        LevelPerksSection(
+            currentLevel = (gamificationState as? GamificationViewModel.GamificationState.Success)?.data?.level ?: 1,
+            onPerkClick = { perk ->
+                // Handle perk click (untuk fitur customize di masa depan)
+                when (perk.id) {
+                    "custom_title" -> {
+                        // Show title dialog
+                        showCustomTitleDialog = true
+                    }
+                    "profile_color" -> {
+                        // Show color dialog
+                        showProfileColorDialog = true
+                    }
+                }
+            }
+        )
+
+
         // User Forum Posts Section
         UserForumListSection(navController = navController)
     }
+    // Tambahkan dialogs
+    if (showCustomTitleDialog) {
+        CustomTitleDialog(
+            currentTitle = (profileState as? ProfileViewModel.ProfileState.Success)?.user?.customTitle ?: "",
+            onConfirm = { newTitle ->
+                // Update via ViewModel
+                showCustomTitleDialog = false
+            },
+            onDismiss = { showCustomTitleDialog = false }
+        )
+    }
+
+    if (showProfileColorDialog) {
+        ProfileColorDialog(
+            currentColor = (profileState as? ProfileViewModel.ProfileState.Success)?.user?.profileColor ?: "#4CAF50",
+            onConfirm = { newColor ->
+                // Update via ViewModel
+                showProfileColorDialog = false
+            },
+            onDismiss = { showProfileColorDialog = false }
+        )
+    }
+
 }
 
 @Composable

@@ -9,6 +9,9 @@ data class User(
     var email: String = "",
     var profilePhotoUrl: String = "",
     var role: UserRole = UserRole.USER,
+    var customTitle: String = "",
+    var profileColor: String = "#4CAF50",
+    var unlockedPerkIds: List<String> = emptyList(),
 
     @get:PropertyName("isAdmin")
     @set:PropertyName("isAdmin")
@@ -21,18 +24,6 @@ data class User(
     var phoneNumber: String = "",
     var nik: String = ""
 ) {
-    // Helper untuk Firebase - convert role ke string
-    fun getRoleString(): String = role.name
-
-    // Helper untuk set role dari string (dari Firebase)
-    fun setRoleFromString(roleString: String) {
-        role = try {
-            UserRole.valueOf(roleString)
-        } catch (e: Exception) {
-            UserRole.USER
-        }
-    }
-
     // ✅ Helper function dengan backward compatibility
     fun getRoleType(): UserRole {
         // Jika isAdmin true tapi role masih USER, upgrade ke ADMIN
@@ -42,11 +33,6 @@ data class User(
             role
         }
     }
-
-    // Check permissions
-    fun isKaderOrAdmin(): Boolean = getRoleType() == UserRole.KADER || getRoleType() == UserRole.ADMIN
-    fun canManageContent(): Boolean = isKaderOrAdmin()
-    fun canManageUsers(): Boolean = getRoleType() == UserRole.ADMIN
 }
 
 enum class UserRole(val displayName: String, val level: Int) {
