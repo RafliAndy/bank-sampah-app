@@ -595,28 +595,37 @@ class GamificationRepository {
         try {
             val userPerks = mutableListOf<String>()
 
+            // Award perks based on level
+            if (newLevel >= 1) {
+                userPerks.add("basic_forum")
+            }
+            if (newLevel >= 2) {
+                userPerks.add("upload_forum")
+            }
+            if (newLevel >= 3) {
+                userPerks.add("profile_color")
+            }
+            if (newLevel >= 5) {
+                userPerks.add("badge_collector")
+            }
+            if (newLevel >= 7) {
+                userPerks.add("custom_title")
+            }
             if (newLevel >= 10) {
-                userPerks.addAll(listOf("basic_forum", "upload_forum", "custom_profile", "custom_title", "mentor_badge"))
-            } else if (newLevel >= 7) {
-                userPerks.addAll(listOf("basic_forum", "upload_forum", "custom_profile", "custom_title"))
-            } else if (newLevel >= 3) {
-                userPerks.addAll(listOf("basic_forum", "upload_forum", "custom_profile"))
-            } else if (newLevel >= 2) {
-                userPerks.addAll(listOf("basic_forum", "upload_forum"))
-            } else if (newLevel >= 1) {
-                userPerks.addAll(listOf("basic_forum"))
+                userPerks.add("mentor_badge")
             }
 
-            val user = database.child("users").child(uid).get().await().getValue(User::class.java)
-            if (user != null) {
-                user.unlockedPerkIds = userPerks
-                database.child("users").child(uid).setValue(user).await()
-                Log.d(TAG, "Perks awarded for level $newLevel: $userPerks")
-            }
+            // Update user's unlocked perks
+            val userRef = database.child("users").child(uid)
+            userRef.child("unlockedPerkIds").setValue(userPerks).await()
+
+            Log.d(TAG, "Perks awarded for level $newLevel: $userPerks")
         } catch (e: Exception) {
             Log.e(TAG, "Error checking perks", e)
+            // Don't throw - perk system is optional
         }
     }
+
 
     // Get user's unlocked perks
     suspend fun getUserUnlockedPerks(uid: String): Result<List<LevelPerk>> {

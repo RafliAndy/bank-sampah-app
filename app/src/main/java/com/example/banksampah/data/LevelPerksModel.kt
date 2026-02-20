@@ -42,7 +42,7 @@ object LevelPerksData {
 
         // Level 3
         LevelPerk(
-            id = "custom_profile",
+            id = "profile_color",
             level = 3,
             title = "Profile Warna",
             description = "Ubah warna profil Anda dengan tema pilihan",

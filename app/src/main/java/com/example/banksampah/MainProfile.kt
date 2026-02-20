@@ -174,8 +174,10 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
                         // ===== PROFILE INFO ROW =====
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(end = 8.dp)
                         ) {
 
                             // PHOTO
@@ -207,8 +209,9 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
                             }
 
                             Column(
-                                modifier = Modifier.padding(start = 16.dp)
-                            ) {
+                                modifier = Modifier
+                                    .weight(1f)
+                            )  {
 
                                 Text(
                                     "Hello,",
@@ -373,13 +376,22 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
         LevelPerksSection(
             currentLevel = (gamificationState as? GamificationViewModel.GamificationState.Success)?.data?.level ?: 1,
             onPerkClick = { perk ->
-                // Handle perk click (untuk fitur customize di masa depan)
                 when (perk.id) {
                     "custom_title" -> {
-                        showCustomTitleDialog = true
+                        // Check if level 7+
+                        val currentLevel = (gamificationState as? GamificationViewModel.GamificationState.Success)?.data?.level ?: 1
+                        if (currentLevel >= 7) {
+                            showCustomTitleDialog = true
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "Capai Level 7 untuk unlock fitur ini",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     }
-                    "profile_color" -> {
-                        // Check if level is high enough
+                    "profile_color" -> {  // ✅ Ubah dari "custom_profile" ke "profile_color"
+                        // Check if level 3+
                         val currentLevel = (gamificationState as? GamificationViewModel.GamificationState.Success)?.data?.level ?: 1
                         if (currentLevel >= 3) {
                             showProfileColorDialog = true
@@ -396,6 +408,7 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
         )
 
 
+
         // User Forum Posts Section
         UserForumListSection(navController = navController)
     }
@@ -404,7 +417,7 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
         CustomTitleDialog(
             currentTitle = (profileState as? ProfileViewModel.ProfileState.Success)?.user?.customTitle ?: "",
             onConfirm = { newTitle ->
-                // Update via ViewModel
+                profileViewModel.updateDisplayName(newTitle)
                 showCustomTitleDialog = false
             },
             onDismiss = { showCustomTitleDialog = false }
