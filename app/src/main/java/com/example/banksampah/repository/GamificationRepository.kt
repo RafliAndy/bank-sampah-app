@@ -293,6 +293,7 @@ class GamificationRepository {
 
             // Check for new badges
             checkAndAwardBadges(uid)
+            checkAndAwardPerks(uid, newLevel)
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -590,7 +591,34 @@ class GamificationRepository {
     }
 
     // ========== PERK SYSTEM ==========
-// Get user's unlocked perks
+    private suspend fun checkAndAwardPerks(uid: String, newLevel: Int) {
+        try {
+            val userPerks = mutableListOf<String>()
+
+            if (newLevel >= 10) {
+                userPerks.addAll(listOf("basic_forum", "upload_forum", "custom_profile", "custom_title", "mentor_badge"))
+            } else if (newLevel >= 7) {
+                userPerks.addAll(listOf("basic_forum", "upload_forum", "custom_profile", "custom_title"))
+            } else if (newLevel >= 3) {
+                userPerks.addAll(listOf("basic_forum", "upload_forum", "custom_profile"))
+            } else if (newLevel >= 2) {
+                userPerks.addAll(listOf("basic_forum", "upload_forum"))
+            } else if (newLevel >= 1) {
+                userPerks.addAll(listOf("basic_forum"))
+            }
+
+            val user = database.child("users").child(uid).get().await().getValue(User::class.java)
+            if (user != null) {
+                user.unlockedPerkIds = userPerks
+                database.child("users").child(uid).setValue(user).await()
+                Log.d(TAG, "Perks awarded for level $newLevel: $userPerks")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking perks", e)
+        }
+    }
+
+    // Get user's unlocked perks
     suspend fun getUserUnlockedPerks(uid: String): Result<List<LevelPerk>> {
         return try {
             val gamification = getUserGamification(uid).getOrNull()

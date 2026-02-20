@@ -18,8 +18,6 @@ data class User(
     var isAdmin: Boolean = false,
 
     var createdAt: Long = 0,
-
-    // Data dari UserProfile
     var address: String = "",
     var phoneNumber: String = "",
     var nik: String = ""

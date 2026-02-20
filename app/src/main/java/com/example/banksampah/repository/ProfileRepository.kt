@@ -109,6 +109,24 @@ class ProfileRepository {
         }
     }
 
+    suspend fun updateProfileColor(colorHex: String): Result<Unit> {
+        return try {
+            val uid = auth.currentUser?.uid ?: throw Exception("User not logged in")
+
+            database.child("users").child(uid)
+                .child("profileColor")
+                .setValue(colorHex)
+                .await()
+
+            Log.d(TAG, "Profile color updated to: $colorHex")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating profile color", e)
+            Result.failure(e)
+        }
+    }
+
+
     // Delete profile photo (hanya hapus URL dari database)
     // Note: Di Cloudinary, image tidak perlu dihapus karena auto-managed
     suspend fun deleteProfilePhoto(): Result<Unit> {

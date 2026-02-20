@@ -109,75 +109,81 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
 
     Column {
         // Profile Header Section
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .background(colorResource(id = R.color.green)),
-        ) {
-            when (val state = profileState) {
-                is ProfileViewModel.ProfileState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = Color.White)
-                    }
-                }
+        when (val state = profileState) {
 
-                is ProfileViewModel.ProfileState.Success -> {
-                    val user = state.user
-                    val userRole = state.user.getRoleType()
+            is ProfileViewModel.ProfileState.Loading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            is ProfileViewModel.ProfileState.Success -> {
+
+                val user = state.user
+                val userRole = user.getRoleType()
+                val profileColor = user.profileColor
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            try {
+                                Color(android.graphics.Color.parseColor(profileColor))
+                            } catch (e: Exception) {
+                                colorResource(id = R.color.green)
+                            }
+                        )
+                        .padding(16.dp)
+                ) {
 
                     Column {
+
+                        // ===== TOP ROW =====
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 20.dp, top = 20.dp, end = 20.dp)
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
                                 text = "Profile",
-                                fontFamily = FontFamily.SansSerif,
-                                fontWeight = FontWeight.Medium,
                                 fontSize = 30.sp,
+                                fontWeight = FontWeight.Medium,
                                 color = Color.White
                             )
+
                             TextButton(
-                                onClick = {
-                                    authViewModel.signout()
-                                },
+                                onClick = { authViewModel.signout() },
                                 modifier = Modifier
-                                    .background(Color.Red, shape = RoundedCornerShape(50))
+                                    .background(Color.Red, RoundedCornerShape(50))
                             ) {
                                 Text(
-                                    text = "Sign Out",
-                                    fontFamily = FontFamily.SansSerif,
+                                    "Sign Out",
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp,
                                     color = Color.White
                                 )
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // ===== PROFILE INFO ROW =====
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 20.dp, end = 20.dp)
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Profile Photo
+
+                            // PHOTO
                             Box(
                                 modifier = Modifier
-                                    .padding(top = 10.dp, bottom = 10.dp)
                                     .size(100.dp)
                                     .clip(CircleShape)
-                                    .border(
-                                        BorderStroke(width = 5.dp, color = Color.White),
-                                        shape = CircleShape
-                                    )
+                                    .border(5.dp, Color.White, CircleShape)
                                     .background(Color.LightGray)
                             ) {
                                 if (user.profilePhotoUrl.isNotEmpty()) {
@@ -186,65 +192,53 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
                                             .data(user.profilePhotoUrl)
                                             .crossfade(true)
                                             .build(),
-                                        contentDescription = "Profile Photo",
+                                        contentDescription = null,
                                         contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize(),
-                                        loading = {
-                                            Box(
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                CircularProgressIndicator(
-                                                    modifier = Modifier.size(30.dp),
-                                                    color = colorResource(id = R.color.green)
-                                                )
-                                            }
-                                        },
-                                        error = {
-                                            Icon(
-                                                imageVector = Icons.Default.Person,
-                                                contentDescription = "Default Profile",
-                                                modifier = Modifier
-                                                    .size(60.dp)
-                                                    .align(Alignment.Center),
-                                                tint = Color.White
-                                            )
-                                        }
+                                        modifier = Modifier.fillMaxSize()
                                     )
                                 } else {
                                     Icon(
                                         imageVector = Icons.Default.Person,
-                                        contentDescription = "Default Profile",
-                                        modifier = Modifier
-                                            .size(60.dp)
-                                            .align(Alignment.Center),
-                                        tint = Color.White
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.align(Alignment.Center)
                                     )
                                 }
                             }
 
                             Column(
-                                modifier = Modifier.padding(10.dp),
+                                modifier = Modifier.padding(start = 16.dp)
                             ) {
+
                                 Text(
-                                    text = "Hello,",
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color(0xFF2C4E30),
-                                    fontSize = 20.sp
-                                )
-                                Text(
-                                    text = user.displayName.ifEmpty { user.fullName },
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color.White,
-                                    modifier = Modifier.width(200.dp),
-                                    fontSize = 25.sp,
+                                    "Hello,",
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    fontSize = 16.sp
                                 )
 
-                                // Badge Role
+                                Text(
+                                    user.displayName.ifEmpty { user.fullName },
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    fontSize = 24.sp
+                                )
+
+                                // ===== CUSTOM TITLE =====
+                                if (user.customTitle.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        "✨ ${user.customTitle}",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White
+                                    )
+                                }
+
+                                // ===== ROLE BADGE =====
                                 if (userRole != UserRole.USER) {
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = when(userRole) {
+                                        text = when (userRole) {
                                             UserRole.ADMIN -> "👑 Admin"
                                             UserRole.KADER -> "⭐ Kader"
                                             else -> ""
@@ -254,7 +248,7 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
                                         color = Color.White,
                                         modifier = Modifier
                                             .background(
-                                                when(userRole) {
+                                                when (userRole) {
                                                     UserRole.ADMIN -> Color(0xFFF44336)
                                                     UserRole.KADER -> Color(0xFFFF9800)
                                                     else -> Color.Gray
@@ -267,44 +261,34 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
                             }
 
                             IconButton(
-                                onClick = {
-                                    navController.navigate(Routes.EDIT_PROFILE)
-                                },
+                                onClick = { navController.navigate(Routes.EDIT_PROFILE) },
                                 modifier = Modifier
-                                    .background(Color.Gray, shape = RoundedCornerShape(100))
+                                    .background(Color(0x80FFFFFF), RoundedCornerShape(100))
                                     .size(35.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Edit,
-                                    contentDescription = "Edit Profile",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
+                                    contentDescription = null,
+                                    tint = Color.White
                                 )
                             }
                         }
                     }
-                    AdminMenuSection(
-                        navController = navController,
-                        userRole = userRole
-                    )
-
                 }
+            }
 
-
-                is ProfileViewModel.ProfileState.Error -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = state.message,
-                            color = Color.White,
-                            fontSize = 16.sp
-                        )
-                    }
+            is ProfileViewModel.ProfileState.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(state.message)
                 }
             }
         }
+
 
         // ===== GAMIFICATION STATS SECTION =====
         when (val state = gamificationState) {
@@ -392,12 +376,20 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
                 // Handle perk click (untuk fitur customize di masa depan)
                 when (perk.id) {
                     "custom_title" -> {
-                        // Show title dialog
                         showCustomTitleDialog = true
                     }
                     "profile_color" -> {
-                        // Show color dialog
-                        showProfileColorDialog = true
+                        // Check if level is high enough
+                        val currentLevel = (gamificationState as? GamificationViewModel.GamificationState.Success)?.data?.level ?: 1
+                        if (currentLevel >= 3) {
+                            showProfileColorDialog = true
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "Capai Level 3 untuk unlock fitur ini",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     }
                 }
             }
@@ -421,9 +413,10 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
 
     if (showProfileColorDialog) {
         ProfileColorDialog(
-            currentColor = (profileState as? ProfileViewModel.ProfileState.Success)?.user?.profileColor ?: "#4CAF50",
+            currentColor = (profileState as? ProfileViewModel.ProfileState.Success)
+                ?.user?.profileColor ?: "#4CAF50",
             onConfirm = { newColor ->
-                // Update via ViewModel
+                profileViewModel.updateProfileColor(newColor)
                 showProfileColorDialog = false
             },
             onDismiss = { showProfileColorDialog = false }

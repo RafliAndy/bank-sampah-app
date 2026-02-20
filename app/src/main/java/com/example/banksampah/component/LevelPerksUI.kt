@@ -1,17 +1,21 @@
 package com.example.banksampah.component
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
@@ -317,57 +321,105 @@ fun ProfileColorDialog(
     onDismiss: () -> Unit
 ) {
     val colors = listOf(
-        "#4CAF50" to "Hijau (Default)",
-        "#2196F3" to "Biru",
-        "#FF9800" to "Orange",
-        "#E91E63" to "Pink",
-        "#9C27B0" to "Ungu",
-        "#00BCD4" to "Cyan"
+        "#4CAF50" to "🟢 Hijau (Default)",
+        "#2196F3" to "🔵 Biru",
+        "#FF9800" to "🟠 Orange",
+        "#E91E63" to "🌸 Pink",
+        "#9C27B0" to "💜 Ungu",
+        "#00BCD4" to "🔷 Cyan",
+        "#F44336" to "❤️ Merah",
+        "#FFD700" to "⭐ Emas"
     )
+
+    var selectedColor by remember { mutableStateOf(currentColor) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Pilih Warna Profil") },
+        title = {
+            Text(
+                "Pilih Warna Profil (Level 3)",
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 300.dp)
+                    .heightIn(max = 400.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 colors.forEach { (colorHex, colorName) ->
-                    Row(
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onConfirm(colorHex) }
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            .clickable { selectedColor = colorHex },
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (selectedColor == colorHex)
+                                Color(android.graphics.Color.parseColor(colorHex)).copy(alpha = 0.3f)
+                            else
+                                Color.White
+                        ),
+                        border = if (selectedColor == colorHex)
+                            BorderStroke(2.dp, Color(android.graphics.Color.parseColor(colorHex)))
+                        else
+                            null
                     ) {
-                        Box(
+                        Row(
                             modifier = Modifier
-                                .size(40.dp)
-                                .background(
-                                    Color(android.graphics.Color.parseColor(colorHex)),
-                                    RoundedCornerShape(8.dp)
-                                )
-                        )
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        Color(android.graphics.Color.parseColor(colorHex))
+                                    )
+                            )
 
-                        Column {
-                            Text(colorName, fontWeight = FontWeight.Bold)
-                            if (colorHex == currentColor) {
-                                Text("✓ Terpilih", fontSize = 12.sp, color = Color.Green)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    colorName,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    colorHex,
+                                    fontSize = 12.sp,
+                                    color = Color.Gray
+                                )
+                            }
+
+                            if (selectedColor == colorHex) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Selected",
+                                    tint = Color(android.graphics.Color.parseColor(colorHex)),
+                                    modifier = Modifier.size(24.dp)
+                                )
                             }
                         }
                     }
                 }
             }
         },
-        confirmButton = {},
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(selectedColor) },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(android.graphics.Color.parseColor(selectedColor))
+                )
+            ) {
+                Text("Simpan Warna")
+            }
+        },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Tutup")
+                Text("Batal")
             }
         }
     )

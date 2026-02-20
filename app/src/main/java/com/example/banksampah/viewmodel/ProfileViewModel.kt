@@ -118,6 +118,24 @@ class ProfileViewModel : ViewModel() {
         }
     }
 
+    fun updateProfileColor(colorHex: String) {
+        viewModelScope.launch {
+            _updateState.value = UpdateState.Updating
+
+            val result = repository.updateProfileColor(colorHex)
+
+            if (result.isSuccess) {
+                _updateState.value = UpdateState.Success
+                loadProfile() // Reload profile
+            } else {
+                _updateState.value = UpdateState.Error(
+                    result.exceptionOrNull()?.message ?: "Gagal update warna profil"
+                )
+            }
+        }
+    }
+
+
     fun deleteProfilePhoto() {
         viewModelScope.launch {
             _updateState.value = UpdateState.Updating
