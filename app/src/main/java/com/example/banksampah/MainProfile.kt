@@ -1,7 +1,6 @@
 package com.example.banksampah
 
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,7 +27,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -390,7 +388,7 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
                             ).show()
                         }
                     }
-                    "profile_color" -> {  // ✅ Ubah dari "custom_profile" ke "profile_color"
+                    "profile_color" -> {
                         // Check if level 3+
                         val currentLevel = (gamificationState as? GamificationViewModel.GamificationState.Success)?.data?.level ?: 1
                         if (currentLevel >= 3) {
@@ -417,7 +415,7 @@ fun MainProfile(navController: NavHostController, authViewModel: AuthViewModel) 
         CustomTitleDialog(
             currentTitle = (profileState as? ProfileViewModel.ProfileState.Success)?.user?.customTitle ?: "",
             onConfirm = { newTitle ->
-                profileViewModel.updateDisplayName(newTitle)
+                profileViewModel.updateCustomTitle(newTitle)
                 showCustomTitleDialog = false
             },
             onDismiss = { showCustomTitleDialog = false }

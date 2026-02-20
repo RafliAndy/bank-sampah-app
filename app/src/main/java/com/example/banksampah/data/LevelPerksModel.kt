@@ -64,8 +64,8 @@ object LevelPerksData {
         LevelPerk(
             id = "custom_title",
             level = 7,
-            title = "Custom Title",
-            description = "Buat custom title di profil Anda (maks 20 karakter)",
+            title = "Update Status",
+            description = "Buat Status di profil Anda (maks 20 karakter)",
             icon = "✨",
             category = PerkCategory.PROFILE
         ),

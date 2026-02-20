@@ -153,6 +153,34 @@ class ProfileViewModel : ViewModel() {
         }
     }
 
+    fun updateCustomTitle(newTitle: String) {
+        viewModelScope.launch {
+            _updateState.value = UpdateState.Updating
+
+            // Validation
+            if (newTitle.isEmpty()) {
+                _updateState.value = UpdateState.Error("Update status tidak boleh kosong")
+                return@launch
+            }
+
+            if (newTitle.length > 20) {
+                _updateState.value = UpdateState.Error("Update status maksimal 20 karakter")
+                return@launch
+            }
+
+            val result = repository.updateCustomTitle(newTitle)
+
+            if (result.isSuccess) {
+                _updateState.value = UpdateState.Success
+                loadProfile() // Reload profile
+            } else {
+                _updateState.value = UpdateState.Error(
+                    result.exceptionOrNull()?.message ?: "Gagal update custom title"
+                )
+            }
+        }
+    }
+
     fun resetUpdateState() {
         _updateState.value = UpdateState.Idle
     }

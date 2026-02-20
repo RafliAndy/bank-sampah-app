@@ -270,7 +270,7 @@ fun CustomTitleDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Custom Title (Maks 20 karakter)") },
+        title = { Text("Update Status (Maks 20 karakter)") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
@@ -284,8 +284,8 @@ fun CustomTitleDialog(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Masukkan title Anda") },
-                    label = { Text("Title Baru") }
+                    placeholder = { Text("Masukkan status anda") },
+                    label = { Text("Status Baru") }
                 )
                 if (errorMsg.isNotEmpty()) {
                     Text(errorMsg, color = Color.Red, fontSize = 12.sp)

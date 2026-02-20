@@ -126,6 +126,72 @@ class ProfileRepository {
         }
     }
 
+    // ========== CUSTOM TITLE (LEVEL 7) ==========
+    suspend fun updateCustomTitle(newTitle: String): Result<Unit> {
+        return try {
+            val uid = auth.currentUser?.uid ?: throw Exception("User not logged in")
+
+            // Validation
+            if (newTitle.length > 20) {
+                throw Exception("Custom title maksimal 20 karakter")
+            }
+
+            if (newTitle.isBlank()) {
+                throw Exception("Custom title tidak boleh kosong")
+            }
+
+            database.child("users").child(uid)
+                .child("customTitle")
+                .setValue(newTitle)
+                .await()
+
+            Log.d(TAG, "Custom title updated to: $newTitle")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating custom title", e)
+            Result.failure(e)
+        }
+    }
+
+    // Get custom title
+    suspend fun getCustomTitle(): Result<String> = suspendCoroutine { continuation ->
+        val uid = auth.currentUser?.uid
+
+        if (uid == null) {
+            continuation.resume(Result.failure(Exception("User not logged in")))
+            return@suspendCoroutine
+        }
+
+        database.child("users").child(uid).child("customTitle")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val title = snapshot.getValue(String::class.java) ?: ""
+                    continuation.resume(Result.success(title))
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    continuation.resume(Result.failure(Exception(error.message)))
+                }
+            })
+    }
+
+    // Delete/Reset custom title
+    suspend fun deleteCustomTitle(): Result<Unit> {
+        return try {
+            val uid = auth.currentUser?.uid ?: throw Exception("User not logged in")
+
+            database.child("users").child(uid)
+                .child("customTitle")
+                .setValue("")
+                .await()
+
+            Log.d(TAG, "Custom title reset")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error resetting custom title", e)
+            Result.failure(e)
+        }
+    }
 
     // Delete profile photo (hanya hapus URL dari database)
     // Note: Di Cloudinary, image tidak perlu dihapus karena auto-managed
