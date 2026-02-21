@@ -23,6 +23,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.example.banksampah.R
@@ -59,7 +60,7 @@ fun MainQuestion(navController: NavHostController) {
 @Composable
 fun Question(
     navController: NavHostController,
-    gamificationViewModel: GamificationViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    gamificationViewModel: GamificationViewModel = viewModel()
 ) {
     var title by remember { mutableStateOf("") }
     var bodytext by remember { mutableStateOf("") }
@@ -73,6 +74,13 @@ fun Question(
     val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) imageUri = uri
+    }
+
+    // ===== PENGECEKAN LEVEL 2 - UPLOAD GAMBAR =====
+    val gamificationState by gamificationViewModel.userGamification.collectAsState()
+    val currentLevel = when (val state = gamificationState) {
+        is GamificationViewModel.GamificationState.Success -> state.data.level
+        else -> 0
     }
 
     // Header dengan tombol Close dan Kirim
@@ -137,7 +145,7 @@ fun Question(
                                     imageUrl = downloadUrl,
                                     uid = uid,
                                     authorName = authorName,
-                                    category = selectedCategory.name, // ✅ Kirim kategori
+                                    category = selectedCategory.name,
                                     onComplete = {
                                         uploading = false
                                         Toast.makeText(context, "Post terkirim", Toast.LENGTH_SHORT).show()
@@ -162,7 +170,7 @@ fun Question(
                             imageUrl = null,
                             uid = uid,
                             authorName = authorName,
-                            category = selectedCategory.name, // ✅ Kirim kategori
+                            category = selectedCategory.name,
                             onComplete = {
                                 uploading = false
                                 Toast.makeText(context, "Post terkirim", Toast.LENGTH_SHORT).show()
@@ -334,17 +342,48 @@ fun Question(
             )
         }
 
-        // Upload Gambar
+        // ===== UPLOAD GAMBAR DENGAN PENGECEKAN LEVEL 2 =====
         Row(verticalAlignment = Alignment.CenterVertically) {
             Button(
-                onClick = { launcher.launch("image/*") },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
+                onClick = {
+                    // ✅ CEK LEVEL 2
+                    if (currentLevel < 2) {
+                        Toast.makeText(
+                            context,
+                            "Capai Level 2 untuk unlock fitur upload gambar",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@Button
+                    }
+                    launcher.launch("image/*")
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (currentLevel >= 2) Color.Black else Color.Gray,
+                    disabledContainerColor = Color.Gray
+                ),
+                enabled = currentLevel >= 2
             ) {
-                Text("Pilih Gambar")
+                Text(
+                    if (currentLevel >= 2) "Pilih Gambar" else "Level 2+",
+                    color = Color.White
+                )
             }
+
             Spacer(Modifier.width(8.dp))
-            imageUri?.let { uri ->
-                AsyncImage(model = uri, contentDescription = "Preview gambar", modifier = Modifier.size(64.dp))
+
+            // Tampilkan info jika belum level 2
+            if (currentLevel < 2) {
+                Text(
+                    "🔒 Unlock Level 2",
+                    fontSize = 12.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+            } else {
+                // Preview gambar jika sudah dipilih
+                imageUri?.let { uri ->
+                    AsyncImage(model = uri, contentDescription = "Preview gambar", modifier = Modifier.size(64.dp))
+                }
             }
         }
     }
@@ -356,7 +395,7 @@ private fun createPost(
     imageUrl: String?,
     uid: String,
     authorName: String,
-    category: String, // ✅ Parameter kategori
+    category: String,
     onComplete: () -> Unit,
     onError: (String) -> Unit,
     gamificationViewModel: GamificationViewModel
@@ -371,7 +410,7 @@ private fun createPost(
         imageUrl = imageUrl,
         authorName = authorName,
         timestamp = System.currentTimeMillis(),
-        category = category // ✅ Simpan kategori
+        category = category
     )
 
     postsRef.child(key).setValue(post)

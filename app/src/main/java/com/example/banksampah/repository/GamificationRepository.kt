@@ -274,7 +274,6 @@ class GamificationRepository {
     }
 
     // ========== POINTS SYSTEM ==========
-
     suspend fun addPoints(uid: String, points: Int, reason: String): Result<Unit> {
         return try {
             val gamification = getUserGamification(uid).getOrThrow()
@@ -605,14 +604,8 @@ class GamificationRepository {
             if (newLevel >= 3) {
                 userPerks.add("profile_color")
             }
-            if (newLevel >= 5) {
-                userPerks.add("badge_collector")
-            }
             if (newLevel >= 7) {
                 userPerks.add("custom_title")
-            }
-            if (newLevel >= 10) {
-                userPerks.add("mentor_badge")
             }
 
             // Update user's unlocked perks
@@ -638,51 +631,6 @@ class GamificationRepository {
         } catch (e: Exception) {
             Log.e(TAG, "Error getting unlocked perks", e)
             Result.failure(e)
-        }
-    }
-
-    // Update custom title
-    suspend fun updateCustomTitle(uid: String, title: String): Result<Unit> {
-        return try {
-            if (title.length > 20) {
-                throw Exception("Title maksimal 20 karakter")
-            }
-
-            database.child("users").child(uid)
-                .child("customTitle")
-                .setValue(title)
-                .await()
-
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error updating custom title", e)
-            Result.failure(e)
-        }
-    }
-
-    // Update profile color
-    suspend fun updateProfileColor(uid: String, colorHex: String): Result<Unit> {
-        return try {
-            database.child("users").child(uid)
-                .child("profileColor")
-                .setValue(colorHex)
-                .await()
-
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error updating profile color", e)
-            Result.failure(e)
-        }
-    }
-
-    // Check if perk unlocked
-    suspend fun isPerkUnlocked(uid: String, perkId: String): Boolean {
-        return try {
-            val gamification = getUserGamification(uid).getOrNull() ?: return false
-            val perk = LevelPerksData.ALL_PERKS.find { it.id == perkId } ?: return false
-            gamification.level >= perk.level
-        } catch (e: Exception) {
-            false
         }
     }
 }

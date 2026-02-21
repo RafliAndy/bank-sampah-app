@@ -13,8 +13,6 @@ data class LevelPerk(
 enum class PerkCategory {
     FORUM,      // Fitur forum
     PROFILE,    // Profile customization
-    BADGE,      // Badges
-    EXCLUSIVE   // Fitur eksklusif
 }
 
 // Data untuk perks yang tersedia
@@ -50,16 +48,6 @@ object LevelPerksData {
             category = PerkCategory.PROFILE
         ),
 
-        // Level 5
-        LevelPerk(
-            id = "badge_collector",
-            level = 5,
-            title = "Badge Kolektor",
-            description = "Unlock badge eksklusif Level 5",
-            icon = "🏅",
-            category = PerkCategory.BADGE
-        ),
-
         // Level 7
         LevelPerk(
             id = "custom_title",
@@ -68,31 +56,14 @@ object LevelPerksData {
             description = "Buat Status di profil Anda (maks 20 karakter)",
             icon = "✨",
             category = PerkCategory.PROFILE
-        ),
-
-        // Level 10
-        LevelPerk(
-            id = "mentor_badge",
-            level = 10,
-            title = "Mentor Badge",
-            description = "Badge khusus Mentor - tampil dengan lencana eksklusif",
-            icon = "👑",
-            category = PerkCategory.BADGE
         )
     )
 
     fun getPerksUntilLevel(level: Int): List<LevelPerk> {
         return ALL_PERKS.filter { it.level <= level }
     }
-
-    fun getNewPerksAtLevel(level: Int): List<LevelPerk> {
-        return ALL_PERKS.filter { it.level == level }
-    }
-
-    fun getPerksByCategory(category: PerkCategory): List<LevelPerk> {
-        return ALL_PERKS.filter { it.category == category }
-    }
 }
+
 
 // User's unlocked perks
 data class UserUnlockedPerks(

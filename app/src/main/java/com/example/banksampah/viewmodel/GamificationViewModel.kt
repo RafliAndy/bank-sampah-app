@@ -235,28 +235,6 @@ class GamificationViewModel : ViewModel() {
         }
     }
 
-    fun updateCustomTitle(newTitle: String) {
-        viewModelScope.launch {
-            val uid = auth.currentUser?.uid ?: return@launch
-
-            val result = repository.updateCustomTitle(uid, newTitle)
-            if (result.isSuccess) {
-                loadUnlockedPerks()
-            }
-        }
-    }
-
-    fun updateProfileColor(colorHex: String) {
-        viewModelScope.launch {
-            val uid = auth.currentUser?.uid ?: return@launch
-
-            val result = repository.updateProfileColor(uid, colorHex)
-            if (result.isSuccess) {
-                loadUnlockedPerks()
-            }
-        }
-    }
-
     // ========== HELPER FUNCTIONS ==========
     fun getLevelProgress(): Float {
         val state = _userGamification.value
