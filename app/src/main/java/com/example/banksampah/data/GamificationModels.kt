@@ -67,36 +67,6 @@ enum class VoteType {
     POST, REPLY
 }
 
-// ========== UPDATED FORUM POST (tambah voting) ==========
-data class ForumPostGamified(
-    var id: String = "",
-    var title: String = "",
-    var body: String = "",
-    var imageUrl: String? = null,
-    var uid: String = "",
-    var authorName: String = "",
-    var timestamp: Long = 0,
-    var upvotes: Int = 0,
-    var downvotes: Int = 0,
-    var isHelpful: Boolean = false,
-    var hasImage: Boolean = false
-)
-
-// ========== UPDATED FORUM REPLY (tambah voting & helpful) ==========
-data class ForumReplyGamified(
-    var id: String = "",
-    var postId: String = "",
-    var parentReplyId: String? = null,
-    var body: String = "",
-    var uid: String = "",
-    var authorName: String = "",
-    var timestamp: Long = 0,
-    var level: Int = 0,
-    var upvotes: Int = 0,
-    var downvotes: Int = 0,
-    var isMarkedHelpful: Boolean = false
-)
-
 // ========== LEADERBOARD ENTRY ==========
 data class LeaderboardEntry(
     val uid: String = "",

@@ -18,8 +18,6 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import com.example.banksampah.component.UserProfileImage
-import com.example.banksampah.component.UserNameWithBadge
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -37,6 +35,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.banksampah.component.CloudinaryImage
 import com.example.banksampah.component.MainTopBar
+import com.example.banksampah.component.UserNameWithBadgeClickable
+import com.example.banksampah.component.UserProfileImageClickable
 import com.example.banksampah.component.formatTimeAgo
 import com.example.banksampah.data.ForumPost
 import com.example.banksampah.data.ForumReply
@@ -295,7 +295,8 @@ fun ForumDetail(
                     post?.let {
                         PostDetail(
                             post = it,
-                            viewModel = gamificationViewModel
+                            viewModel = gamificationViewModel,
+                            navController = navController
                         )
                     }
 
@@ -313,6 +314,7 @@ fun ForumDetail(
                             replies = replies,
                             postOwnerId = p.uid,
                             gamificationViewModel = gamificationViewModel,
+                            navController = navController,
                             onReplyClick = { replyId, authorName ->
                                 replyingTo = replyId to authorName
                             }
@@ -455,7 +457,11 @@ fun TopBar(
 }
 
 @Composable
-fun PostDetail(post: ForumPost, viewModel: GamificationViewModel) {
+fun PostDetail(
+    post: ForumPost,
+    viewModel: GamificationViewModel,
+    navController: NavHostController
+) {
     val currentUser = FirebaseAuth.getInstance().currentUser
 
     Card(
@@ -466,23 +472,27 @@ fun PostDetail(post: ForumPost, viewModel: GamificationViewModel) {
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Gunakan komponen foto profil baru dengan badge admin
-                UserProfileImage(
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                UserProfileImageClickable(
                     uid = post.uid,
                     size = 45.dp,
-                    showAdminBadge = true
+                    showAdminBadge = true,
+                    onUserClick = { userId ->
+                        navController.navigate(Routes.viewUserProfile(userId))
+                    }
                 )
-
                 Spacer(modifier = Modifier.width(12.dp))
-
-                Column {
-                    // Gunakan komponen nama dengan badge admin
-                    UserNameWithBadge(
+                Column(modifier = Modifier.weight(1f)) {
+                    UserNameWithBadgeClickable(
                         uid = post.uid,
                         authorName = post.authorName,
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        onUserClick = { userId ->
+                            navController.navigate(Routes.viewUserProfile(userId))
+                        }
                     )
                     Text(
                         text = formatTimeAgo(post.timestamp),
@@ -653,12 +663,14 @@ fun VotingButtons(
 
     }
 }
+
 @Composable
 fun RepliesList(
     replies: List<ForumReply>,
     postOwnerId: String,
     onReplyClick: (String, String) -> Unit,
-    gamificationViewModel: GamificationViewModel
+    gamificationViewModel: GamificationViewModel,
+    navController: NavHostController
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         RenderReplies(
@@ -667,7 +679,8 @@ fun RepliesList(
             onReplyClick = onReplyClick,
             level = 0,
             postOwnerId = postOwnerId,
-            gamificationViewModel = gamificationViewModel
+            gamificationViewModel = gamificationViewModel,
+            navController = navController
         )
     }
 }
@@ -679,7 +692,8 @@ fun ReplyItem(
     postOwnerId: String,
     onReplyClick: (String, String) -> Unit,
     level: Int,
-    gamificationViewModel: GamificationViewModel
+    gamificationViewModel: GamificationViewModel,
+    navController: NavHostController
 ) {
 
     val currentUser = FirebaseAuth.getInstance().currentUser
@@ -725,22 +739,24 @@ fun ReplyItem(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Gunakan komponen foto profil baru dengan badge admin
-                    UserProfileImage(
+                    UserProfileImageClickable(
                         uid = reply.uid,
                         size = 32.dp,
-                        showAdminBadge = true
+                        showAdminBadge = true,
+                        onUserClick = { userId ->
+                            navController.navigate(Routes.viewUserProfile(userId))
+                        }
                     )
-
                     Spacer(modifier = Modifier.width(8.dp))
-
-                    Column {
-                        // Gunakan komponen nama dengan badge admin
-                        UserNameWithBadge(
+                    Column(modifier = Modifier.weight(1f)) {
+                        UserNameWithBadgeClickable(
                             uid = reply.uid,
                             authorName = reply.authorName,
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            onUserClick = { userId ->
+                                navController.navigate(Routes.viewUserProfile(userId))
+                            }
                         )
                         Text(
                             text = formatTimeAgo(reply.timestamp),
@@ -749,6 +765,7 @@ fun ReplyItem(
                         )
                     }
                 }
+
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -930,7 +947,8 @@ fun RenderReplies(
     onReplyClick: (String, String) -> Unit,
     level: Int,
     postOwnerId: String,
-    gamificationViewModel: GamificationViewModel
+    gamificationViewModel: GamificationViewModel,
+    navController: NavHostController
 ) {
     val children = replies.filter { it.parentReplyId == parentId }
 
@@ -940,7 +958,8 @@ fun RenderReplies(
             postOwnerId = postOwnerId,
             onReplyClick = onReplyClick,
             level = level,
-            gamificationViewModel = gamificationViewModel
+            gamificationViewModel = gamificationViewModel,
+            navController = navController
         )
 
         RenderReplies(
@@ -949,7 +968,8 @@ fun RenderReplies(
             onReplyClick = onReplyClick,
             level = level + 1,
             postOwnerId = postOwnerId,
-            gamificationViewModel = gamificationViewModel
+            gamificationViewModel = gamificationViewModel,
+            navController = navController
         )
     }
 }

@@ -42,9 +42,14 @@ object Routes {
     fun edukasiDetail(edukasiId: String) = "edukasi_detail/$edukasiId"
     fun albumDetail(albumId: String) = "album_detail/$albumId"
     fun adminAlbumPhotos(albumId: String) = "admin_album_photos/$albumId"
+    fun viewUserProfile(userId: String) = "view_user_profile/$userId"
 
     // Admin
     const val ADMIN_USER_MANAGEMENT = "admin_user_management"
+
+    // Route untuk view user profile lain
+    const val VIEW_USER_PROFILE = "view_user_profile/{userId}"
+
 }
 
 @Composable
@@ -108,6 +113,21 @@ fun AppNavigation() {
                 navController = navController,
                 authViewModel = authViewModel,
                 postId = postId
+            )
+        }
+
+        composable(
+            route = Routes.VIEW_USER_PROFILE,
+            arguments = listOf(
+                navArgument("userId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId") ?: ""
+            ViewUserProfileScreen(
+                navController = navController,
+                userId = userId
             )
         }
 

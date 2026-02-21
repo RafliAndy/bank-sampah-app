@@ -319,17 +319,34 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
 
         // Header dengan foto profil dan nama
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            UserProfileImage(uid = post.uid, size = 40.dp, showAdminBadge = true)
-            Spacer(Modifier.width(8.dp))
-            Column {
-                UserNameWithBadge(uid = post.uid, authorName = post.authorName, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text(formatTimeAgo(post.timestamp), fontSize = 10.sp, color = Color.Gray)
+            UserProfileImageClickable(
+                uid = post.uid,
+                size = 45.dp,
+                showAdminBadge = true,
+                onUserClick = { userId ->
+                    navController.navigate(Routes.viewUserProfile(userId))
+                }
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                UserNameWithBadgeClickable(
+                    uid = post.uid,
+                    authorName = post.authorName,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    onUserClick = { userId ->
+                        navController.navigate(Routes.viewUserProfile(userId))
+                    }
+                )
+                Text(
+                    text = formatTimeAgo(post.timestamp),
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
             }
         }
-
         Spacer(Modifier.height(12.dp))
 
         // Konten post

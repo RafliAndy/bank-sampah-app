@@ -2,6 +2,7 @@ package com.example.banksampah.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -212,6 +213,204 @@ fun UserNameWithBadge(
         )
 
         // Badge icon untuk Admin dan Kader
+        when(userRole) {
+            UserRole.ADMIN -> {
+                Icon(
+                    imageVector = Icons.Default.Verified,
+                    contentDescription = "Admin",
+                    tint = Color(0xFFF44336),
+                    modifier = Modifier.size(fontSize.value.dp)
+                )
+            }
+            UserRole.KADER -> {
+                Icon(
+                    imageVector = Icons.Default.Verified,
+                    contentDescription = "Kader",
+                    tint = Color(0xFFFF9800),
+                    modifier = Modifier.size(fontSize.value.dp)
+                )
+            }
+            else -> Unit
+        }
+    }
+}
+
+// ==========================================
+// CLICKABLE VERSIONS (untuk Forum, Reply, dll)
+// ==========================================
+
+@Composable
+fun UserProfileImageClickable(
+    uid: String,
+    size: Dp = 40.dp,
+    showAdminBadge: Boolean = true,
+    modifier: Modifier = Modifier,
+    onUserClick: (String) -> Unit = {}
+) {
+    var userData by remember(uid) { mutableStateOf<UserProfileData?>(null) }
+    val context = LocalContext.current
+
+    // Fetch user data dari Firebase
+    LaunchedEffect(uid) {
+        if (uid.isNotEmpty()) {
+            val userRef = FirebaseDatabase.getInstance().getReference("users/$uid")
+            userRef.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val photoUrl = snapshot.child("profilePhotoUrl").getValue(String::class.java) ?: ""
+                    val roleString = snapshot.child("role").getValue(String::class.java) ?: "USER"
+                    val role = try {
+                        UserRole.valueOf(roleString)
+                    } catch (e: Exception) {
+                        val isAdmin = snapshot.child("isAdmin").getValue(Boolean::class.java) ?: false
+                        if (isAdmin) UserRole.ADMIN else UserRole.USER
+                    }
+                    userData = UserProfileData(photoUrl, role)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    userData = UserProfileData()
+                }
+            })
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .size(size)
+            .clickable { onUserClick(uid) }
+    ) {
+        // Profile Image Container
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(Color.LightGray)
+                .then(
+                    when (userData?.role) {
+                        UserRole.ADMIN -> Modifier.border(2.dp, Color(0xFFF44336), CircleShape)
+                        UserRole.KADER -> Modifier.border(2.dp, Color(0xFFFF9800), CircleShape)
+                        else -> Modifier
+                    }
+                )
+        ) {
+            if (userData?.profilePhotoUrl?.isNotEmpty() == true) {
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(userData?.profilePhotoUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Profile Photo",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                    loading = {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(size / 3),
+                                strokeWidth = 2.dp,
+                                color = Color.Gray
+                            )
+                        }
+                    },
+                    error = {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Default Profile",
+                            modifier = Modifier
+                                .size(size * 0.6f)
+                                .align(Alignment.Center),
+                            tint = Color.Black
+                        )
+                    }
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Default Profile",
+                    modifier = Modifier
+                        .size(size * 0.6f)
+                        .align(Alignment.Center),
+                    tint = Color.Black
+                )
+            }
+        }
+
+        // Badge di pojok kanan bawah
+        if (showAdminBadge && (userData?.role == UserRole.ADMIN || userData?.role == UserRole.KADER)) {
+            Box(
+                modifier = Modifier
+                    .size(size * 0.35f)
+                    .align(Alignment.BottomEnd)
+                    .clip(CircleShape)
+                    .background(
+                        when (userData?.role) {
+                            UserRole.ADMIN -> Color(0xFFF44336)
+                            UserRole.KADER -> Color(0xFFFF9800)
+                            else -> Color.Gray
+                        }
+                    )
+                    .padding(2.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Verified,
+                    contentDescription = "Badge",
+                    tint = Color.White,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun UserNameWithBadgeClickable(
+    uid: String,
+    authorName: String,
+    fontSize: TextUnit = 14.sp,
+    fontWeight: FontWeight = FontWeight.Bold,
+    onUserClick: (String) -> Unit = {}
+) {
+    var userRole by remember(uid) { mutableStateOf(UserRole.USER) }
+
+    LaunchedEffect(uid) {
+        if (uid.isNotEmpty()) {
+            val userRef = FirebaseDatabase.getInstance().getReference("users/$uid")
+            userRef.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val roleString = snapshot.child("role").getValue(String::class.java) ?: "USER"
+                    userRole = try {
+                        UserRole.valueOf(roleString)
+                    } catch (e: Exception) {
+                        val isAdmin = snapshot.child("isAdmin").getValue(Boolean::class.java) ?: false
+                        if (isAdmin) UserRole.ADMIN else UserRole.USER
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    userRole = UserRole.USER
+                }
+            })
+        }
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.clickable { onUserClick(uid) }
+    ) {
+        Text(
+            text = authorName.ifBlank { "Anonymous" },
+            fontSize = fontSize,
+            fontWeight = fontWeight,
+            color = when(userRole) {
+                UserRole.ADMIN -> Color(0xFFF44336)
+                UserRole.KADER -> Color(0xFFFF9800)
+                UserRole.USER -> Color.Black
+            }
+        )
+
         when(userRole) {
             UserRole.ADMIN -> {
                 Icon(
