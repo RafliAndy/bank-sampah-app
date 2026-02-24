@@ -92,7 +92,59 @@ fun AdminMenuSection(navController: NavHostController, userRole: UserRole) {
                 iconColor = Color(0xFF2196F3)
             )
 
-            // Menu KHUSUS ADMIN (dipindahkan KELUAR dari if KADER)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // ✅ Kelola Forum - untuk KADER dan ADMIN (dipindahkan keluar)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = {navController.navigate(Routes.MAIN_FORUM)}),
+                colors = CardDefaults.cardColors(
+                    containerColor = colorResource(id = R.color.greenlight)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Forum,
+                            contentDescription = null,
+                            tint = colorResource(id = R.color.green),
+                            modifier = Modifier.size(28.dp)
+                        )
+
+                        Column {
+                            Text(
+                                text = "Kelola Forum",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Kelola topik forum",
+                                fontSize = 13.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = Color.Gray
+                    )
+                }
+            }
+
+            // ✅ Menu KHUSUS ADMIN (Kelola User)
             if (userRole == UserRole.ADMIN) {
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -109,7 +161,7 @@ fun AdminMenuSection(navController: NavHostController, userRole: UserRole) {
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
 
-                // Tombol Kelola User untuk ADMIN
+                // Tombol Kelola User - HANYA untuk ADMIN
                 AdminMenuItem(
                     icon = Icons.Default.People,
                     title = "Kelola User",
@@ -117,58 +169,6 @@ fun AdminMenuSection(navController: NavHostController, userRole: UserRole) {
                     onClick = { navController.navigate(Routes.ADMIN_USER_MANAGEMENT) },
                     iconColor = Color(0xFFF44336)
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = {navController.navigate(Routes.MAIN_FORUM)}),
-                    colors = CardDefaults.cardColors(
-                        containerColor = colorResource(id = R.color.greenlight)
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Forum,
-                                contentDescription = null,
-                                tint = colorResource(id = R.color.green),
-                                modifier = Modifier.size(28.dp)
-                            )
-
-                            Column {
-                                Text(
-                                    text = "Kelola Forum",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "Kelola topik forum",
-                                    fontSize = 13.sp,
-                                    color = Color.Gray
-                                )
-                            }
-                        }
-
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            tint = Color.Gray
-                        )
-                    }
-                }
-
             }
         }
     }
