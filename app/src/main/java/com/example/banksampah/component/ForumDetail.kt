@@ -190,27 +190,34 @@ fun ForumDetail(
                         val repliesRef = FirebaseDatabase.getInstance().getReference("replies")
                         val newReplyRef = repliesRef.push()
 
+                        // ✅ CAPTURE NESTED REPLY INFO SEBELUM DIRESET!
+                        val capturedParentReplyId = replyingTo.first
+                        val capturedParentReplyAuthor = replyingTo.second
+
                         val newReply = ForumReply(
                             id = newReplyRef.key ?: "",
                             postId = postId,
-                            parentReplyId = replyingTo.first,
+                            parentReplyId = capturedParentReplyId,
                             body = replyText,
                             uid = currentUser.uid,
                             authorName = currentUserName,
                             timestamp = System.currentTimeMillis(),
-                            level = if (replyingTo.first == null) 0 else 1
+                            level = if (capturedParentReplyId == null) 0 else 1
                         )
 
                         newReplyRef.setValue(newReply).addOnSuccessListener {
                             gamificationViewModel.awardPointsForNewReply()
-                            // ===== BUAT NOTIFIKASI =====
+
+                            // ✅ RESET SEBELUM LAUNCH COROUTINE
+                            replyText = ""
+                            replyingTo = null to null
+
                             lifecycleScope.launch {
                                 val notificationRepo = NotificationRepository()
 
                                 try {
-                                    if (replyingTo.first == null) {
-                                        // ✅ Reply langsung ke post
-                                        Log.d("FORUM_DETAIL", "Creating FORUM_REPLY notification")
+                                    // ✅ GUNAKAN CAPTURED VALUES, BUKAN replyingTo!
+                                    if (capturedParentReplyId == null) {
                                         post?.let { p ->
                                             notificationRepo.createPostReplyNotification(
                                                 postId = postId,
@@ -219,40 +226,30 @@ fun ForumDetail(
                                             )
                                         }
                                     } else {
-                                        // ✅ Reply ke reply (NESTED)
-                                        Log.d("FORUM_DETAIL", "Creating NESTED_REPLY notification for parentId: ${replyingTo.first}")
+                                        try {
+                                            val parentReplySnapshot = repliesRef.child(capturedParentReplyId).get().await()
+                                            val parentReplyOwnerId = parentReplySnapshot.child("uid").getValue(String::class.java)
 
-                                        // Gunakan suspend function dengan await
-                                        val parentReplySnapshot = repliesRef.child(replyingTo.first!!).get().await()
-                                        val parentReplyOwnerId = parentReplySnapshot.child("uid").getValue(String::class.java)
-
-                                        Log.d("FORUM_DETAIL", "parentReplyOwnerId: $parentReplyOwnerId, currentUser: ${currentUser?.uid}")
-
-                                        if (parentReplyOwnerId != null && parentReplyOwnerId != currentUser?.uid) {
-                                            Log.d("FORUM_DETAIL", "Calling createNestedReplyNotification")
-                                            val result = notificationRepo.createNestedReplyNotification(
-                                                postId = postId,
-                                                parentReplyId = replyingTo.first!!,
-                                                parentReplyOwnerId = parentReplyOwnerId,
-                                                newReplyId = newReply.id
-                                            )
-                                            Log.d("FORUM_DETAIL", "createNestedReplyNotification result: $result")
-                                        } else {
-                                            Log.d("FORUM_DETAIL", "Skipped notification: same user or null owner")
+                                            if (parentReplyOwnerId != null && parentReplyOwnerId != currentUser.uid) {
+                                                notificationRepo.createNestedReplyNotification(
+                                                    postId = postId,
+                                                    parentReplyId = capturedParentReplyId,
+                                                    parentReplyOwnerId = parentReplyOwnerId,
+                                                    newReplyId = newReply.id
+                                                )
+                                            }
+                                        } catch (e: Exception) {
+                                            // Handle error silently
                                         }
                                     }
                                 } catch (e: Exception) {
-                                    Log.e("FORUM_DETAIL", "❌ Error creating notification: ${e.message}", e)
+                                    // Handle error silently
                                 }
                             }
 
-                            replyText = ""
-                            replyingTo = null to null
                         }.addOnFailureListener { error ->
-                            Log.e("FORUM_DETAIL", "❌ Error setValue reply: ${error.message}", error)
                             Toast.makeText(context, "Gagal mengirim balasan", Toast.LENGTH_SHORT).show()
                         }
-
                     }
                 }
             )
