@@ -40,6 +40,7 @@ import com.example.banksampah.component.UserProfileImageClickable
 import com.example.banksampah.component.formatTimeAgo
 import com.example.banksampah.data.ForumPost
 import com.example.banksampah.data.ForumReply
+import com.example.banksampah.data.UserRole
 import com.example.banksampah.data.VoteType
 import com.example.banksampah.viewmodel.AuthViewModel
 import com.example.banksampah.viewmodel.ForumViewModel
@@ -68,7 +69,7 @@ fun ForumDetail(
     var replies by remember { mutableStateOf<List<ForumReply>>(emptyList()) }
     var replyText by remember { mutableStateOf("") }
     var replyingTo by remember { mutableStateOf<Pair<String?, String?>>(null to null) }
-    var isAdmin by remember { mutableStateOf(false) }
+    var userRole by remember { mutableStateOf(UserRole.USER) }  // ✅ GANTI isAdmin dan isKader dengan userRole
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     val currentUser = FirebaseAuth.getInstance().currentUser
@@ -78,12 +79,25 @@ fun ForumDetail(
     val forumViewModel: ForumViewModel = viewModel()
     val deleteState by forumViewModel.deleteState.collectAsState()
 
-    // Check if user is admin
+    // ✅ UPDATE: Check user role (lebih sederhana)
     LaunchedEffect(currentUser?.uid) {
         currentUser?.uid?.let { uid ->
-            val adminRef = FirebaseDatabase.getInstance().getReference("users/$uid/isAdmin")
-            adminRef.get().addOnSuccessListener { snapshot ->
-                isAdmin = snapshot.getValue(Boolean::class.java) ?: false
+            val userRef = FirebaseDatabase.getInstance().getReference("users/$uid")
+            userRef.get().addOnSuccessListener { snapshot ->
+                val roleString = snapshot.child("role").getValue(String::class.java)
+                userRole = if (roleString != null) {
+                    try {
+                        UserRole.valueOf(roleString)
+                    } catch (e: Exception) {
+                        // Backward compatibility: check isAdmin
+                        val isAdmin = snapshot.child("isAdmin").getValue(Boolean::class.java) ?: false
+                        if (isAdmin) UserRole.ADMIN else UserRole.USER
+                    }
+                } else {
+                    // Fallback untuk backward compatibility
+                    val isAdmin = snapshot.child("isAdmin").getValue(Boolean::class.java) ?: false
+                    if (isAdmin) UserRole.ADMIN else UserRole.USER
+                }
             }
         }
     }
@@ -279,7 +293,7 @@ fun ForumDetail(
                     navController = navController,
                     post = post,
                     currentUser = currentUser,
-                    isAdmin = isAdmin,
+                    userRole = userRole,
                     onDeleteClick = { showDeleteDialog = true }
                 )
 
@@ -318,7 +332,6 @@ fun ForumDetail(
                         )
                     }
 
-
                     Spacer(modifier = Modifier.height(80.dp))
                 }
             }
@@ -355,12 +368,13 @@ fun ForumDetail(
     }
 }
 
+// ✅ UPDATE TopBar function
 @Composable
 fun TopBar(
     navController: NavHostController,
     post: ForumPost?,
     currentUser: com.google.firebase.auth.FirebaseUser?,
-    isAdmin: Boolean,
+    userRole: UserRole = UserRole.USER,  // ✅ GANTI PARAMETER
     onDeleteClick: () -> Unit
 ) {
     Row(
@@ -413,14 +427,13 @@ fun TopBar(
             }
         }
 
-        // Delete Button dengan Elevation
-        if (post != null && (post.uid == currentUser?.uid || isAdmin)) {
+        // ✅ DELETE BUTTON - SIMPLIFIED
+        if (post != null && (post.uid == currentUser?.uid ||
+                    userRole == UserRole.ADMIN || userRole == UserRole.KADER)) {
             Card(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .clickable(
-                        onClick = onDeleteClick
-                    ),
+                    .clickable(onClick = onDeleteClick),
                 shape = RoundedCornerShape(20.dp),
                 elevation = CardDefaults.cardElevation(
                     defaultElevation = 3.dp,
@@ -560,7 +573,6 @@ fun PostDetail(
     }
 }
 
-
 @Composable
 fun VotingButtons(
     targetId: String,
@@ -681,7 +693,6 @@ fun RepliesList(
         )
     }
 }
-
 
 @Composable
 fun ReplyItem(

@@ -2,6 +2,7 @@ package com.example.banksampah.repository
 
 import android.util.Log
 import com.example.banksampah.data.ForumPost
+import com.example.banksampah.data.UserRole
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -60,7 +61,7 @@ class ForumRepository {
         }
     }
 
-    // Delete post (only owner or admin can delete)
+    // Delete post (only owner or admin/kader can delete)
     suspend fun deletePost(postId: String): Result<Unit> {
         return try {
             val currentUid = auth.currentUser?.uid ?: throw Exception("User not logged in")
@@ -73,11 +74,11 @@ class ForumRepository {
                 throw Exception("Post not found")
             }
 
-            // Check if user is owner or admin
+            // Check if user is owner, ADMIN, or KADER
             val isOwner = post.uid == currentUid
-            val isAdmin = checkIfAdmin(currentUid)
+            val canDelete = canDeletePost(currentUid)
 
-            if (!isOwner && !isAdmin) {
+            if (!isOwner && !canDelete) {
                 throw Exception("You don't have permission to delete this post")
             }
 
@@ -94,6 +95,7 @@ class ForumRepository {
             Result.failure(e)
         }
     }
+
 
     // Delete all replies for a post
     private suspend fun deleteRepliesForPost(postId: String) {
@@ -121,13 +123,27 @@ class ForumRepository {
         }
     }
 
-    // Check if user is admin
-    private suspend fun checkIfAdmin(uid: String): Boolean {
+    // Check if user is admin/kader
+    private suspend fun canDeletePost(uid: String): Boolean {
         return try {
-            val snapshot = database.child("users").child(uid).child("isAdmin").get().await()
-            snapshot.getValue(Boolean::class.java) ?: false
+            val snapshot = database.child("users").child(uid).get().await()
+
+            // Check dengan role field (newer approach)
+            val roleString = snapshot.child("role").getValue(String::class.java)
+            if (roleString != null) {
+                val role = try {
+                    UserRole.valueOf(roleString)
+                } catch (e: Exception) {
+                    UserRole.USER
+                }
+                return role == UserRole.ADMIN || role == UserRole.KADER
+            }
+
+            // Fallback untuk backward compatibility: check isAdmin
+            val isAdmin = snapshot.child("isAdmin").getValue(Boolean::class.java) ?: false
+            isAdmin
         } catch (e: Exception) {
-            Log.e(TAG, "Error checking admin status: ${e.message}")
+            Log.e(TAG, "Error checking user role: ${e.message}")
             false
         }
     }
