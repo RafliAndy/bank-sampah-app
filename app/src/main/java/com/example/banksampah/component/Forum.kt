@@ -307,12 +307,6 @@ fun ForumItem(post: ForumPost, navController: NavHostController) {
                     color = Color.White
                 )
             }
-
-            Text(
-                text = formatTimeAgo(post.timestamp),
-                fontSize = 10.sp,
-                color = Color.Gray
-            )
         }
 
         Spacer(Modifier.height(12.dp))

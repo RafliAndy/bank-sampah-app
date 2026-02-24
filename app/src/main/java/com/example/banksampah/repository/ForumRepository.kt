@@ -2,6 +2,7 @@ package com.example.banksampah.repository
 
 import android.util.Log
 import com.example.banksampah.data.ForumPost
+import com.example.banksampah.data.ForumReply
 import com.example.banksampah.data.UserRole
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -95,6 +96,112 @@ class ForumRepository {
             Result.failure(e)
         }
     }
+
+    // Delete reply (owner, admin, atau kader dapat menghapus)
+    suspend fun deleteReply(replyId: String, postId: String): Result<Unit> {
+        return try {
+            val currentUid = auth.currentUser?.uid ?: throw Exception("User not logged in")
+
+            // Get reply to check ownership
+            val replySnapshot = database.child("replies").child(replyId).get().await()
+            val reply = replySnapshot.getValue(ForumReply::class.java)
+
+            if (reply == null) {
+                throw Exception("Reply not found")
+            }
+
+            // Check if user is owner, ADMIN, or KADER
+            val isOwner = reply.uid == currentUid
+            val canDelete = canDeletePost(currentUid) // Gunakan fungsi yang sudah ada
+
+            if (!isOwner && !canDelete) {
+                throw Exception("You don't have permission to delete this reply")
+            }
+
+            // Dapatkan role untuk tracking
+            val userSnapshot = database.child("users").child(currentUid).get().await()
+            val roleString = userSnapshot.child("role").getValue(String::class.java)
+            val role = try {
+                UserRole.valueOf(roleString ?: "USER")
+            } catch (e: Exception) {
+                UserRole.USER
+            }
+
+            // Soft delete: Mark sebagai deleted dengan info siapa yang hapus
+            val deletedBy = when {
+                isOwner -> "owner"
+                role == UserRole.ADMIN -> "admin"
+                role == UserRole.KADER -> "kader"
+                else -> "user"
+            }
+
+            database.child("replies").child(replyId).updateChildren(mapOf(
+                "isDeleted" to true,
+                "deletedBy" to deletedBy,
+                "deletedAt" to System.currentTimeMillis(),
+                "body" to ""
+            )).await()
+
+            Log.d(TAG, "Reply $replyId soft deleted by $deletedBy")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting reply: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    // Hard delete (hanya untuk owner atau yang menghapusnya bisa hapus sepenuhnya)
+    suspend fun hardDeleteReply(replyId: String): Result<Unit> {
+        return try {
+            val currentUid = auth.currentUser?.uid ?: throw Exception("User not logged in")
+
+            // Get reply
+            val replySnapshot = database.child("replies").child(replyId).get().await()
+            val reply = replySnapshot.getValue(ForumReply::class.java)
+
+            if (reply == null) {
+                throw Exception("Reply not found")
+            }
+
+            // Hanya owner atau yang originally delete bisa hard delete
+            val isOwner = reply.uid == currentUid
+            val isDeleter = reply.deletedBy.isNotEmpty() // Ada yang sudah delete sebelumnya
+
+            if (!isOwner && !isDeleter) {
+                throw Exception("Only owner can hard delete")
+            }
+
+            // Hard delete: hapus sepenuhnya beserta nested replies
+            deleteNestedReplies(replyId)
+            database.child("replies").child(replyId).removeValue().await()
+
+            Log.d(TAG, "Reply $replyId hard deleted")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error hard deleting reply: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    // Hapus semua nested replies
+    private suspend fun deleteNestedReplies(parentReplyId: String) {
+        try {
+            val repliesSnapshot = database.child("replies")
+                .orderByChild("parentReplyId")
+                .equalTo(parentReplyId)
+                .get()
+                .await()
+
+            for (replySnapshot in repliesSnapshot.children) {
+                val nestedId = replySnapshot.key ?: continue
+                deleteNestedReplies(nestedId) // Recursive
+                replySnapshot.ref.removeValue().await()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting nested replies: ${e.message}", e)
+        }
+    }
+
 
 
     // Delete all replies for a post

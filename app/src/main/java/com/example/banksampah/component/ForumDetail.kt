@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,8 +70,10 @@ fun ForumDetail(
     var replies by remember { mutableStateOf<List<ForumReply>>(emptyList()) }
     var replyText by remember { mutableStateOf("") }
     var replyingTo by remember { mutableStateOf<Pair<String?, String?>>(null to null) }
-    var userRole by remember { mutableStateOf(UserRole.USER) }  // ✅ GANTI isAdmin dan isKader dengan userRole
+    var userRole by remember { mutableStateOf(UserRole.USER) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showReplyDeleteDialog by remember { mutableStateOf(false) }
+    var selectedReplyForDelete by remember { mutableStateOf<String?>(null) }
 
     val currentUser = FirebaseAuth.getInstance().currentUser
     var currentUserName by remember { mutableStateOf("") }
@@ -78,6 +81,7 @@ fun ForumDetail(
     // ViewModel untuk handle delete
     val forumViewModel: ForumViewModel = viewModel()
     val deleteState by forumViewModel.deleteState.collectAsState()
+    val replyDeleteState by forumViewModel.replyDeleteState.collectAsState()
 
     // ✅ UPDATE: Check user role (lebih sederhana)
     LaunchedEffect(currentUser?.uid) {
@@ -99,6 +103,41 @@ fun ForumDetail(
                     if (isAdmin) UserRole.ADMIN else UserRole.USER
                 }
             }
+        }
+    }
+
+    // Handle reply delete result
+    LaunchedEffect(replyDeleteState) {
+        when (val state = replyDeleteState) {
+            is ForumViewModel.DeleteState.Success -> {
+                Toast.makeText(context, "Balasan berhasil dihapus", Toast.LENGTH_SHORT).show()
+                forumViewModel.resetReplyDeleteState()
+                // Reload replies
+                val repliesRef = FirebaseDatabase.getInstance().getReference("replies")
+                repliesRef.addValueEventListener(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        val replyList = mutableListOf<ForumReply>()
+                        for (replySnapshot in snapshot.children) {
+                            val reply = replySnapshot.getValue(ForumReply::class.java)
+                            reply?.let {
+                                if (it.id.isEmpty()) {
+                                    it.id = replySnapshot.key ?: ""
+                                }
+                                if (it.postId == postId) {
+                                    replyList.add(it)
+                                }
+                            }
+                        }
+                        replies = replyList.sortedBy { it.timestamp }
+                    }
+                    override fun onCancelled(error: DatabaseError) {}
+                })
+            }
+            is ForumViewModel.DeleteState.Error -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                forumViewModel.resetReplyDeleteState()
+            }
+            else -> Unit
         }
     }
 
@@ -326,13 +365,54 @@ fun ForumDetail(
                             postOwnerId = p.uid,
                             gamificationViewModel = gamificationViewModel,
                             navController = navController,
+                            userRole = userRole,
+                            currentUserUid = currentUser?.uid ?: "",
                             onReplyClick = { replyId, authorName ->
                                 replyingTo = replyId to authorName
+                            },
+                            onDeleteReply = { replyId ->
+                                selectedReplyForDelete = replyId
+                                showReplyDeleteDialog = true
                             }
                         )
                     }
 
                     Spacer(modifier = Modifier.height(80.dp))
+                }
+                // Reply delete confirmation dialog
+                if (showReplyDeleteDialog && selectedReplyForDelete != null) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            showReplyDeleteDialog = false
+                            selectedReplyForDelete = null
+                        },
+                        title = { Text("Hapus Balasan") },
+                        text = {
+                            Text("Apakah Anda yakin ingin menghapus balasan ini?")
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    showReplyDeleteDialog = false
+                                    forumViewModel.deleteReply(selectedReplyForDelete!!, postId)
+                                    selectedReplyForDelete = null
+                                },
+                                colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                            ) {
+                                Text("Hapus")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = {
+                                    showReplyDeleteDialog = false
+                                    selectedReplyForDelete = null
+                                }
+                            ) {
+                                Text("Batal")
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -679,7 +759,10 @@ fun RepliesList(
     postOwnerId: String,
     onReplyClick: (String, String) -> Unit,
     gamificationViewModel: GamificationViewModel,
-    navController: NavHostController
+    navController: NavHostController,
+    userRole: UserRole = UserRole.USER,
+    currentUserUid: String = "",
+    onDeleteReply: (String) -> Unit = {}
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         RenderReplies(
@@ -689,7 +772,10 @@ fun RepliesList(
             level = 0,
             postOwnerId = postOwnerId,
             gamificationViewModel = gamificationViewModel,
-            navController = navController
+            navController = navController,
+            userRole = userRole,
+            currentUserUid = currentUserUid,
+            onDeleteReply = onDeleteReply
         )
     }
 }
@@ -701,11 +787,20 @@ fun ReplyItem(
     onReplyClick: (String, String) -> Unit,
     level: Int,
     gamificationViewModel: GamificationViewModel,
-    navController: NavHostController
+    navController: NavHostController,
+    userRole: UserRole = UserRole.USER,  // ✅ TAMBAHAN
+    currentUserUid: String = "",          // ✅ TAMBAHAN
+    onDeleteClick: (String) -> Unit = {}  // ✅ TAMBAHAN
 ) {
 
     val currentUser = FirebaseAuth.getInstance().currentUser
     val isPostOwner = currentUser?.uid == postOwnerId
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // ✅ Check permission untuk hapus
+    val canDelete = currentUser?.uid == reply.uid ||
+            userRole == UserRole.ADMIN ||
+            userRole == UserRole.KADER
 
     Row(
         modifier = Modifier
@@ -735,7 +830,9 @@ fun ReplyItem(
                 .padding(start = 8.dp),
             shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(
-                containerColor = if (reply.isMarkedHelpful)
+                containerColor = if (reply.isDeleted)
+                    Color(0xFFF5F5F5) // Abu-abu untuk deleted
+                else if (reply.isMarkedHelpful)
                     Color(0xFFE8F5E9) // Hijau muda untuk helpful answer
                 else if (level == 0)
                     colorResource(id = R.color.greenlight)
@@ -744,124 +841,194 @@ fun ReplyItem(
             )
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    UserProfileImageClickable(
-                        uid = reply.uid,
-                        size = 32.dp,
-                        showAdminBadge = true,
-                        onUserClick = { userId ->
-                            navController.navigate(Routes.viewUserProfile(userId))
+                // ✅ BARU: Tampilkan "Deleted" state
+                if (reply.isDeleted) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Deleted",
+                            modifier = Modifier.size(16.dp),
+                            tint = Color.Gray
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Comment deleted by ${reply.deletedBy}",
+                                fontSize = 13.sp,
+                                color = Color.Gray,
+                                fontStyle = FontStyle.Italic
+                            )
                         }
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        UserNameWithBadgeClickable(
+                    }
+                } else {
+                    // ✅ NORMAL: Tampilkan reply content
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        UserProfileImageClickable(
                             uid = reply.uid,
-                            authorName = reply.authorName,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
+                            size = 32.dp,
+                            showAdminBadge = true,
                             onUserClick = { userId ->
                                 navController.navigate(Routes.viewUserProfile(userId))
                             }
                         )
-                        Text(
-                            text = formatTimeAgo(reply.timestamp),
-                            fontSize = 10.sp,
-                            color = Color.Gray
-                        )
-                    }
-                }
-
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = reply.body,
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Voting buttons
-                    VotingButtons(
-                        targetId = reply.id,
-                        targetType = VoteType.REPLY,
-                        upvotes = reply.upvotes,
-                        downvotes = reply.downvotes,
-                        onUpvote = { gamificationViewModel.upvoteReply(reply.id) },
-                        onDownvote = { gamificationViewModel.downvoteReply(reply.id) },
-                        enabled = currentUser?.uid != reply.uid
-                    )
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        // "Balas" button
-                        TextButton(
-                            onClick = { onReplyClick(reply.id, reply.authorName) },
-                            contentPadding = PaddingValues(horizontal = 8.dp)
-                        ) {
-                            Text("Balas", fontSize = 12.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            UserNameWithBadgeClickable(
+                                uid = reply.uid,
+                                authorName = reply.authorName,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                onUserClick = { userId ->
+                                    navController.navigate(Routes.viewUserProfile(userId))
+                                }
+                            )
+                            Text(
+                                text = formatTimeAgo(reply.timestamp),
+                                fontSize = 10.sp,
+                                color = Color.Gray
+                            )
                         }
 
-                        // "Tandai Helpful" button (only for post owner, only on level 0)
-                        if (isPostOwner && level == 0 && !reply.isMarkedHelpful) {
-                            TextButton(
-                                onClick = {
-                                    gamificationViewModel.markReplyAsHelpful(reply.postId, reply.id)
-                                },
-                                contentPadding = PaddingValues(horizontal = 8.dp)
+                        // ✅ BARU: Tombol hapus untuk admin/kader
+                        if (canDelete) {
+                            IconButton(
+                                onClick = { showDeleteDialog = true },
+                                modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Helpful",
-                                    modifier = Modifier.size(14.dp),
-                                    tint = colorResource(id = R.color.green)
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = Color.Red,
+                                    modifier = Modifier.size(20.dp)
                                 )
-                                Spacer(Modifier.width(4.dp))
-                                Text("Helpful", fontSize = 12.sp)
                             }
                         }
+                    }
 
-                        // Badge jika sudah marked as helpful
-                        if (reply.isMarkedHelpful) {
-                            Surface(
-                                color = Color(0xFF4CAF50),
-                                shape = RoundedCornerShape(12.dp)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = reply.body,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Voting buttons
+                        VotingButtons(
+                            targetId = reply.id,
+                            targetType = VoteType.REPLY,
+                            upvotes = reply.upvotes,
+                            downvotes = reply.downvotes,
+                            onUpvote = { gamificationViewModel.upvoteReply(reply.id) },
+                            onDownvote = { gamificationViewModel.downvoteReply(reply.id) },
+                            enabled = currentUser?.uid != reply.uid
+                        )
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // "Balas" button
+                            TextButton(
+                                onClick = { onReplyClick(reply.id, reply.authorName) },
+                                contentPadding = PaddingValues(horizontal = 8.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                Text("Balas", fontSize = 12.sp)
+                            }
+
+                            // "Tandai Helpful" button (only for post owner, only on level 0)
+                            if (isPostOwner && level == 0 && !reply.isMarkedHelpful) {
+                                TextButton(
+                                    onClick = {
+                                        gamificationViewModel.markReplyAsHelpful(reply.postId, reply.id)
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 8.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
-                                        contentDescription = null,
+                                        contentDescription = "Helpful",
                                         modifier = Modifier.size(14.dp),
-                                        tint = Color.White
+                                        tint = colorResource(id = R.color.green)
                                     )
-                                    Text(
-                                        "Helpful Answer",
-                                        fontSize = 11.sp,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Helpful", fontSize = 12.sp)
+                                }
+                            }
+
+                            // Badge jika sudah marked as helpful
+                            if (reply.isMarkedHelpful) {
+                                Surface(
+                                    color = Color(0xFF4CAF50),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = Color.White
+                                        )
+                                        Text(
+                                            "Helpful Answer",
+                                            fontSize = 11.sp,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
-
-
-
             }
         }
+    }
+
+    // ✅ BARU: Delete confirmation dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Hapus Balasan") },
+            text = {
+                Text("Apakah Anda yakin ingin menghapus balasan ini? Balasan akan diganti dengan 'comment deleted by ${
+                    when {
+                        currentUser?.uid == reply.uid -> "author"
+                        userRole == UserRole.ADMIN -> "admin"
+                        userRole == UserRole.KADER -> "kader"
+                        else -> "user"
+                    }
+                }'")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDeleteClick(reply.id)
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                ) {
+                    Text("Hapus")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
     }
 }
 
@@ -956,7 +1123,10 @@ fun RenderReplies(
     level: Int,
     postOwnerId: String,
     gamificationViewModel: GamificationViewModel,
-    navController: NavHostController
+    navController: NavHostController,
+    userRole: UserRole = UserRole.USER,
+    currentUserUid: String = "",
+    onDeleteReply: (String) -> Unit = {}
 ) {
     val children = replies.filter { it.parentReplyId == parentId }
 
@@ -967,7 +1137,10 @@ fun RenderReplies(
             onReplyClick = onReplyClick,
             level = level,
             gamificationViewModel = gamificationViewModel,
-            navController = navController
+            navController = navController,
+            userRole = userRole,
+            currentUserUid = currentUserUid,
+            onDeleteClick = onDeleteReply
         )
 
         RenderReplies(
@@ -977,7 +1150,10 @@ fun RenderReplies(
             level = level + 1,
             postOwnerId = postOwnerId,
             gamificationViewModel = gamificationViewModel,
-            navController = navController
+            navController = navController,
+            userRole = userRole,
+            currentUserUid = currentUserUid,
+            onDeleteReply = onDeleteReply
         )
     }
 }

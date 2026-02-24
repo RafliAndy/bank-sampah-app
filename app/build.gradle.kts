@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.ui.text)
 
     // Testing
     testImplementation(libs.junit)

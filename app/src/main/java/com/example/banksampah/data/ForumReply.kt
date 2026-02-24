@@ -17,5 +17,12 @@ data class ForumReply(
 
     @get:PropertyName("isMarkedHelpful")
     @set:PropertyName("isMarkedHelpful")
-    var isMarkedHelpful: Boolean = false
+    var isMarkedHelpful: Boolean = false,
+
+    @get:PropertyName("isDeleted")
+    @set:PropertyName("isDeleted")
+    var isDeleted: Boolean = false,
+
+    var deletedBy: String = "",
+    var deletedAt: Long = 0
 )

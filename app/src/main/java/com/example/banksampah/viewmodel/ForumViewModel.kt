@@ -74,4 +74,29 @@ class ForumViewModel : ViewModel() {
     fun resetDeleteState() {
         _deleteState.value = DeleteState.Idle
     }
+
+    private val _replyDeleteState = MutableStateFlow<DeleteState>(DeleteState.Idle)
+    val replyDeleteState: StateFlow<DeleteState> = _replyDeleteState
+
+    // Fungsi untuk menghapus reply
+    fun deleteReply(replyId: String, postId: String) {
+        viewModelScope.launch {
+            _replyDeleteState.value = DeleteState.Deleting
+
+            val result = repository.deleteReply(replyId, postId)
+
+            if (result.isSuccess) {
+                _replyDeleteState.value = DeleteState.Success
+            } else {
+                _replyDeleteState.value = DeleteState.Error(
+                    result.exceptionOrNull()?.message ?: "Gagal menghapus reply"
+                )
+            }
+        }
+    }
+
+    fun resetReplyDeleteState() {
+        _replyDeleteState.value = DeleteState.Idle
+    }
+
 }
